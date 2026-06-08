@@ -47,8 +47,10 @@ BEGIN
         COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
+        DECLARE @ErrorMessage NVARCHAR(MAX) = ERROR_MESSAGE();
+
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        EXEC Audit.usp_EndLoadBatch @LoadBatchID, 'Failed', @RowsInserted, 0, ERROR_MESSAGE;
+        EXEC Audit.usp_EndLoadBatch @LoadBatchID, 'Failed', @RowsInserted, 0, @ErrorMessage;
         THROW;
     END CATCH
 END
