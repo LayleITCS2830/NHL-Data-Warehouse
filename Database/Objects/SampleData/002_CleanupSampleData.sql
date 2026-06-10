@@ -18,18 +18,18 @@ BEGIN TRY
     DELETE pgs
     FROM fact.PLAYER_GAME_STATS_FACT AS pgs
     INNER JOIN fact.GAME_FACT AS g
-        ON g.GameKey = pgs.GameKey
-    WHERE g.GameID IN (2024020001, 2024020002, 2024020003);
+        ON g.GAME_KEY = pgs.GAME_KEY
+    WHERE g.GAME_ID IN (2024020001, 2024020002, 2024020003);
 
     -- Remove sample games after dependent player statistics are gone.
     DELETE g
     FROM fact.GAME_FACT AS g
-    WHERE g.GameID IN (2024020001, 2024020002, 2024020003);
+    WHERE g.GAME_ID IN (2024020001, 2024020002, 2024020003);
 
     -- Remove sample players only when no facts still reference them.
     DELETE p
     FROM dimension.PLAYER_DIM AS p
-    WHERE p.PlayerID IN
+    WHERE p.PLAYER_ID IN
     (
         8478403, 8473419, 8479318, 8478483,
         8478048, 8480069, 8476453, 8475167
@@ -38,49 +38,49 @@ BEGIN TRY
       (
           SELECT 1
           FROM fact.PLAYER_GAME_STATS_FACT AS pgs
-          WHERE pgs.PlayerKey = p.PlayerKey
+          WHERE pgs.PLAYER_KEY = p.PLAYER_KEY
       );
 
     -- Remove sample teams only when no players or facts still reference them.
     DELETE t
     FROM dimension.TEAM_DIM AS t
-    WHERE t.TeamID IN (6, 10, 3, 14)
+    WHERE t.TEAM_ID IN (6, 10, 3, 14)
       AND NOT EXISTS
       (
           SELECT 1
           FROM dimension.PLAYER_DIM AS p
-          WHERE p.TeamKey = t.TeamKey
+          WHERE p.TEAM_KEY = t.TEAM_KEY
       )
       AND NOT EXISTS
       (
           SELECT 1
           FROM fact.GAME_FACT AS g
-          WHERE g.HomeTeamKey = t.TeamKey
-             OR g.AwayTeamKey = t.TeamKey
+          WHERE g.HOME_TEAM_KEY = t.TEAM_KEY
+             OR g.AWAY_TEAM_KEY = t.TEAM_KEY
       )
       AND NOT EXISTS
       (
           SELECT 1
           FROM fact.PLAYER_GAME_STATS_FACT AS pgs
-          WHERE pgs.TeamKey = t.TeamKey
+          WHERE pgs.TEAM_KEY = t.TEAM_KEY
       );
 
     -- Remove sample staging rows.
     DELETE FROM staging.PLAYER_GAME_STATS_RAW
-    WHERE LoadBatchID = @PlayerGameStatsLoadBatchID;
+    WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID;
 
     DELETE FROM staging.GAME_RAW
-    WHERE LoadBatchID = @GameLoadBatchID;
+    WHERE LOAD_BATCH_ID = @GameLoadBatchID;
 
     DELETE FROM staging.PLAYER_RAW
-    WHERE LoadBatchID = @PlayerLoadBatchID;
+    WHERE LOAD_BATCH_ID = @PlayerLoadBatchID;
 
     DELETE FROM staging.TEAM_RAW
-    WHERE LoadBatchID = @TeamLoadBatchID;
+    WHERE LOAD_BATCH_ID = @TeamLoadBatchID;
 
     -- Remove sample audit rows after the staged data has been removed.
     DELETE FROM audit.LOAD_BATCH
-    WHERE LoadBatchID IN
+    WHERE LOAD_BATCH_ID IN
     (
         @TeamLoadBatchID,
         @PlayerLoadBatchID,
@@ -91,13 +91,13 @@ BEGIN TRY
     -- Remove sample date rows only when no fact rows still reference them.
     DELETE d
     FROM dimension.DATE_DIM AS d
-    WHERE d.FullDate >= '2024-10-01'
-      AND d.FullDate <= '2024-10-31'
+    WHERE d.FULL_DATE >= '2024-10-01'
+      AND d.FULL_DATE <= '2024-10-31'
       AND NOT EXISTS
       (
           SELECT 1
           FROM fact.GAME_FACT AS g
-          WHERE g.DateKey = d.DateKey
+          WHERE g.DATE_KEY = d.DATE_KEY
       );
 
     COMMIT TRANSACTION;

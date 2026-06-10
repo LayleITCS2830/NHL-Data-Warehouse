@@ -2,7 +2,7 @@ USE NHLDataWarehouse;
 GO
 
 CREATE OR ALTER PROCEDURE audit.P_END_LOAD_BATCH
-    @LoadBatchID UNIQUEIDENTIFIER,
+    @Load_batch_id UNIQUEIDENTIFIER,
     @Status VARCHAR(20),
     @RowsInserted INT = NULL,
     @RowsUpdated INT = NULL,
@@ -18,23 +18,23 @@ DESCRIPTION:
     and error details when a load fails.
 
 INPUT PARAMETERS:
-    @LoadBatchID UNIQUEIDENTIFIER - The identifier for the load batch to complete.
+    @Load_batch_id UNIQUEIDENTIFIER - The identifier for the load batch to complete.
     @Status VARCHAR(20) - Final status: 'Succeeded' or 'Failed'.
     @RowsInserted INT - Number of rows inserted during the load. Default: NULL
     @RowsUpdated INT - Number of rows updated during the load. Default: NULL
     @ErrorMessage NVARCHAR(MAX) - Error message if the load failed. Default: NULL
 
 *****************************************************************************************/
-BEGIN
-    SET NOCOUNT ON;
-    SET XACT_ABORT ON;
 
-    UPDATE audit.LOAD_BATCH
-    SET LoadEndDate = SYSUTCDATETIME(),
-        Status = @Status,
-        RowsInserted = @RowsInserted,
-        RowsUpdated = @RowsUpdated,
-        ErrorMessage = @ErrorMessage
-    WHERE LoadBatchID = @LoadBatchID;
-END
+SET NOCOUNT ON
+SET XACT_ABORT ON
+
+UPDATE audit.load_batch
+SET load_end_date = SYSUTCDATETIME(),
+    status = @Status,
+    rows_inserted = @RowsInserted,
+    rows_updated = @RowsUpdated,
+    error_message = @ErrorMessage
+WHERE load_batch_id = @Load_batch_id
+
 GO

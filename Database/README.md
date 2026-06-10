@@ -86,7 +86,7 @@ reporting.vw_player_season_summary
 ## ETL Flow
 
 1. Start a load with `audit.P_START_LOAD_BATCH`.
-2. Insert raw API rows into `staging.*_RAW` tables using the returned `LoadBatchID`.
+2. Insert raw API rows into `staging.*_RAW` tables using the returned `LOAD_BATCH_ID`.
 3. Populate required dates with `dimension.P_POPULATE_DATE_DIMENSION`.
 4. Load dimensions with `dimension.P_LOAD_DIM_TEAM` and `dimension.P_LOAD_DIM_PLAYER`.
 5. Load facts with `fact.P_LOAD_FACT_GAME` and `fact.P_LOAD_FACT_PLAYER_GAME_STATS`.

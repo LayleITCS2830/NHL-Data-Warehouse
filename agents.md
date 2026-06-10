@@ -58,19 +58,43 @@ NHLDataWarehouse/
 ## Database Naming Conventions
 
 ### Stored Procedures
-* follow pattern `schema.[P_TYPE]__[PROCEDURE_NAME]`:
-* `P_INTF__` - Interface/UI queries (data retrieval for screens)
-* `P_ETL__` - ETL operations
-* `P_EML__` - Email generation
-* `P_LOG__` - Logging operations
-* `P_SEC__` - Security operations
-* `P_REP__` - Reports
+* Follow pattern `schema.P_[OPERATION]_[OBJECT]`.
+* Procedure names use uppercase after the schema name.
+* Procedure parameters and local variables use lowercase snake_case.
+* Table and column references inside stored procedures use lowercase Kimball-style names.
+* Do not wrap the whole procedure body in an extra `BEGIN ... END` block after the header.
+* Use `SET NOCOUNT ON` and `SET XACT_ABORT ON` immediately after the header comment.
+* Omit semicolons except where required by T-SQL, such as before a CTE with `;WITH`.
+* `P_INTF_` - Interface/UI queries (data retrieval for screens)
+* `P_ETL_` - ETL operations
+* `P_EML_` - Email generation
+* `P_LOG_` - Logging operations
+* `P_SEC_` - Security operations
+* `P_REP_` - Reports
 
-### Fuctions
+### Functions
 * Functions use `F_...`.
 
 ### Views
-* Views use `V_APP__...`, `V_ETL__...`, or similar prefixes.
+* Reporting views use pattern `reporting.V_[VIEW_NAME]`.
+* View names use uppercase after the schema name.
+* Table and column references inside views use lowercase Kimball-style names.
+* Bracketed output aliases may use business-friendly title case.
+* Use schema-qualified object references in `FROM` and `JOIN` clauses.
+* Avoid `SELECT *`; explicitly list reporting columns.
+* Use concise table aliases without `AS` in `FROM` and `JOIN` clauses.
+* Prefer `JOIN` over `INNER JOIN` for inner joins.
+* Align `SELECT`, `FROM`, `JOIN`, and `ON` clauses like `reporting.V_PLAYER_GAME_STATS`.
+
+### Columns
+* Column names in table definition scripts must be Kimball-style uppercase names.
+* Column references inside stored procedures, views, and functions must be Kimball-style lowercase names.
+* Use underscores between words for readability.
+* Surrogate keys use `[ENTITY]_KEY` in table definition scripts and `[entity]_key` in stored procedures, views, and functions.
+* Natural/source keys use `[ENTITY]_ID` in table definition scripts and `[entity]_id` in stored procedures, views, and functions.
+* Descriptive attributes use clear business names, such as `TEAM_NAME` / `team_name`, `PLAYER_FULL_NAME` / `player_full_name`, or `DIVISION_NAME` / `division_name`.
+* Audit and metadata columns use names such as `LOAD_BATCH_ID`, `CREATED_DATE`, `MODIFIED_DATE`, `IS_ACTIVE`, and `SOURCE_SYSTEM` in table definition scripts.
+* Do not create new camelCase or PascalCase table/column names.
 
 ### Constraints
 * Primary key constraints use `[TABLE]_pk`.
@@ -81,11 +105,11 @@ NHLDataWarehouse/
 
 ### Schemas
 
-* Staging
-* Dimension
-* Fact
-* Reporting
-* Audit
+* staging
+* dimension
+* fact
+* reporting
+* audit
 
 ### Data Flow
 
@@ -110,6 +134,8 @@ Reporting Views
 * Add comments to all scripts.
 * Preserve natural keys from source systems.
 * Use surrogate keys for dimension tables.
+* Use Kimball-style uppercase table and column names when creating tables and columns.
+* Use Kimball-style lowercase table and column names in stored procedures, views, functions, and ETL mappings.
 * Separate staging, warehouse, audit, and reporting objects by schema.
 * Do not place warehouse objects in dbo unless explicitly required.
 
@@ -117,7 +143,7 @@ Reporting Views
 
 ### Tables
 
-**Naming Pattern:** `[schema].[TABLE_DIM]` or `[schema].[TABLE_FACT]`
+**Naming Pattern in table definition scripts:** `[schema].[TABLE_DIM]` or `[schema].[TABLE_FACT]`
 
 ```sql
 dimension.TEAM_DIM
@@ -142,7 +168,7 @@ reporting.V_PLAYER_SEASON_SUMMARY
 
 ### Stored Procedures
 
-**Naming Pattern:** `[schema].P_[OPERATION]__[OBJECT]`
+**Naming Pattern:** `[schema].P_[OPERATION]_[OBJECT]`
 
 ```sql
 dimension.P_LOAD_DIM_TEAM
@@ -179,6 +205,42 @@ IX_GAME_FACT__GAME_ID
 IX_PLAYER_DIM__PLAYER_ID
 ```
 
+### Tables and Columns
+
+**Table definition scripts:** Kimball-style uppercase names with underscores between words.
+
+```sql
+TEAM_KEY
+TEAM_ID
+TEAM_NAME
+PLAYER_KEY
+PLAYER_ID
+PLAYER_FULL_NAME
+GAME_DATE_KEY
+LOAD_BATCH_ID
+SOURCE_SYSTEM
+CREATED_DATE
+MODIFIED_DATE
+IS_ACTIVE
+```
+
+**Stored procedures, views, and functions:** reference table and column names in Kimball-style lowercase.
+
+```sql
+team_key
+team_id
+team_name
+player_key
+player_id
+player_full_name
+game_date_key
+load_batch_id
+source_system
+created_date
+modified_date
+is_active
+```
+
 
 
 ---
@@ -188,15 +250,42 @@ IX_PLAYER_DIM__PLAYER_ID
 * Use SET NOCOUNT ON in stored procedures.
 * Avoid SELECT *.
 * Explicitly list columns in INSERT statements.
-* Use TRY/CATCH error handling.
-* Use transactions when modifying warehouse data.
+* Use TRY/CATCH error handling for ETL/load procedures and multi-step data modifications.
+* Use transactions for ETL/load procedures and multi-step warehouse modifications.
 * Write rerunnable deployment scripts whenever practical.
 * Use schema-qualified object references.
 * Use meaningful aliases.
+* In stored procedures, align `FROM`, `JOIN`, `WHERE`, `AND`, and `ON` clauses for readability.
 
 ---
 
 ## Code Templates
+
+### View Template
+
+Use this template as a starting point when creating reporting views:
+
+```sql
+USE NHLDataWarehouse
+GO
+
+CREATE OR ALTER VIEW reporting.V_VIEW_NAME
+AS
+SELECT  a.business_key AS [Business Key],
+        a.descriptive_attribute AS [Descriptive Attribute],
+        b.metric_value AS [Metric Value]
+FROM    dimension.source_dim        a
+JOIN    fact.source_fact            b   ON  b.source_key = a.source_key;
+GO
+```
+
+**View Template Guidelines:**
+* Use uppercase `V_...` view names after the schema name.
+* Use lowercase Kimball-style table and column references.
+* Keep reporting output aliases business-friendly using bracketed title case.
+* Put the first selected column on the `SELECT` line, then align subsequent columns.
+* Align table aliases and `ON` predicates in `FROM` and `JOIN` clauses.
+* Use concise aliases without `AS` for table sources.
 
 ### Stored Procedure Template
 
@@ -204,9 +293,9 @@ Use this template as a starting point when creating new stored procedures:
 
 ```sql
 CREATE OR ALTER PROCEDURE [schema_name].[P_OPERATION_NAME]
-    @Parameter1Name DATATYPE,
-    @Parameter2Name DATATYPE = DEFAULT_VALUE,
-    @OutputParameter DATATYPE OUTPUT
+    @parameter_1_name DATATYPE,
+    @parameter_2_name DATATYPE = DEFAULT_VALUE,
+    @output_parameter DATATYPE OUTPUT
 AS
 /*****************************************************************************************
 PROC:	[schema_name].[P_OPERATION_NAME]
@@ -224,57 +313,57 @@ NOTES:
     - Are there any special configurations or settings required?
 
 INPUT PARAMETERS:
-    @Parameter1Name DATATYPE - Description of what this parameter represents and 
+    @parameter_1_name DATATYPE - Description of what this parameter represents and
                                 how it is used in the procedure.
-    @Parameter2Name DATATYPE - Description. Default value: [specify default]
+    @parameter_2_name DATATYPE - Description. Default value: [specify default]
 
 OUTPUT PARAMETERS:
-    @OutputParameter DATATYPE - Description of the value(s) returned to the caller.
+    @output_parameter DATATYPE - Description of the value(s) returned to the caller.
 
 SAMPLE CALL:
-    DECLARE @OutputParam DATATYPE;
+    DECLARE @output_param DATATYPE
     EXEC [schema_name].[P_OPERATION_NAME]
-        @Parameter1Name = 'value1', 
-        @Parameter2Name = 'value2',
-        @OutputParameter = @OutputParam OUTPUT;
-    SELECT @OutputParam AS Result;
+        @parameter_1_name = 'value1',
+        @parameter_2_name = 'value2',
+        @output_parameter = @output_param OUTPUT
+    SELECT @output_param AS result
 
 CHANGE HISTORY:
     MM/DD/YYYY - AUTHOR - Initial creation
     MM/DD/YYYY - AUTHOR - Description of change
 
 *****************************************************************************************/
-DECLARE @RowsInserted INT = 0,
-        @RowsUpdated INT = 0,
-        @RowsDeleted INT = 0;
+SET NOCOUNT ON
+SET XACT_ABORT ON
+
+DECLARE @rows_inserted INT = 0,
+        @rows_updated INT = 0,
+        @rows_deleted INT = 0
 
 BEGIN TRY
-    BEGIN TRANSACTION;
-
-    SET NOCOUNT ON;
-    SET XACT_ABORT ON;
+    BEGIN TRANSACTION
 
     -- ========================================================================
     -- Your procedure logic goes here
     -- ========================================================================
 
     -- If this is an ETL procedure, call the audit procedures at the end:
-    -- EXEC audit.P_END_LOAD_BATCH @LoadBatchId, 'Succeeded', @RowsInserted, @RowsUpdated, NULL;
+    -- EXEC audit.P_END_LOAD_BATCH @load_batch_id, 'Succeeded', @rows_inserted, @rows_updated, NULL
 
-    COMMIT TRANSACTION;
+    COMMIT TRANSACTION
 END TRY
 BEGIN CATCH
-    DECLARE @ErrorMessage NVARCHAR(MAX) = ERROR_MESSAGE();
+    DECLARE @error_message NVARCHAR(MAX) = ERROR_MESSAGE()
 
     -- Rollback transaction if it's still active
     IF @@TRANCOUNT > 0
-        ROLLBACK TRANSACTION;
+        ROLLBACK TRANSACTION
 
     -- If this is an ETL procedure, log the error:
-    -- EXEC audit.P_END_LOAD_BATCH @LoadBatchId, 'Failed', @RowsInserted, @RowsUpdated, @ErrorMessage;
+    -- EXEC audit.P_END_LOAD_BATCH @load_batch_id, 'Failed', @rows_inserted, @rows_updated, @error_message
 
     -- Re-throw the error for the caller to handle
-    THROW;
+    THROW
 END CATCH
 
 GO
@@ -286,7 +375,7 @@ GO
 * Always include CHANGE HISTORY for tracking modifications
 * Use TRY/CATCH for error handling and transaction management
 * For ETL procedures, integrate with audit.P_START_LOAD_BATCH and audit.P_END_LOAD_BATCH
-* Use camelCase for parameter names (@Parameter1Name, @LoadBatchId) and variable names (@RowsInserted)
+* Use lowercase snake_case for parameter names (`@parameter_1_name`, `@load_batch_id`) and variable names (`@rows_inserted`)
 * Declare row count variables for logging and auditing
 
 ### ETL Stored Procedure Template
@@ -295,7 +384,7 @@ Use this template for ETL procedures that perform dimension/fact loading with up
 
 ```sql
 CREATE OR ALTER PROCEDURE [schema_name].[P_LOAD_OBJECT]
-    @LoadBatchId UNIQUEIDENTIFIER
+    @load_batch_id UNIQUEIDENTIFIER
 AS
 /*****************************************************************************************
 PROC:	[schema_name].[P_LOAD_OBJECT]
@@ -309,42 +398,42 @@ DESCRIPTION:
 
 NOTES: 
     This procedure assumes that all source staging tables have been populated with the
-    latest data for the given @LoadBatchId. Include any dependencies on other procedures
-    or tables that must be loaded first (e.g., "dimension.TEAM_DIM must be loaded before
+    latest data for the given @load_batch_id. Include any dependencies on other procedures
+    or tables that must be loaded first (e.g., "dimension.team_dim must be loaded before
     this procedure is called").
 
 INPUT PARAMETERS:
-    @LoadBatchId UNIQUEIDENTIFIER - The identifier for the current load batch, used to
+    @load_batch_id UNIQUEIDENTIFIER - The identifier for the current load batch, used to
                                     filter source data and for auditing purposes.
 
 SAMPLE CALL:
-    DECLARE @LoadBatchId UNIQUEIDENTIFIER = 'YOUR-BATCH-ID';
-    EXEC [schema_name].[P_LOAD_OBJECT] @LoadBatchId;
+    DECLARE @load_batch_id UNIQUEIDENTIFIER = 'YOUR-BATCH-ID'
+    EXEC [schema_name].[P_LOAD_OBJECT] @load_batch_id
 
 CHANGE HISTORY:
     MM/DD/YYYY - AUTHOR - Initial creation
     MM/DD/YYYY - AUTHOR - Description of change
 
 *****************************************************************************************/
-SET NOCOUNT ON;
-SET XACT_ABORT ON;
+SET NOCOUNT ON
+SET XACT_ABORT ON
 
-DECLARE @RowsInserted INT = 0,
-        @RowsUpdated INT = 0;
+DECLARE @rows_inserted INT = 0,
+        @rows_updated INT = 0
 
 BEGIN TRY
-    BEGIN TRANSACTION;
+    BEGIN TRANSACTION
 
     -- ========================================================================
     -- UPDATE: Existing records
     -- ========================================================================
-    WITH source_rows AS
+    ;WITH source_rows AS
     (
         SELECT  src.natural_key,
                 src.attribute_1,
                 src.attribute_2
-        FROM    staging.SOURCE_TABLE    src
-        WHERE   src.load_batch_id = @LoadBatchId
+        FROM    staging.source_table    src
+        WHERE   src.load_batch_id = @load_batch_id
         AND     src.natural_key IS NOT NULL
     )
     UPDATE tgt
@@ -352,50 +441,50 @@ BEGIN TRY
         attribute_2 = src.attribute_2,
         is_active = 1,
         modified_date = SYSUTCDATETIME()
-    FROM    dimension.TARGET_DIM  tgt
+    FROM    dimension.target_dim  tgt
     JOIN    source_rows           src ON  src.natural_key = tgt.natural_key
     WHERE   ( ISNULL(tgt.attribute_1, '') <> ISNULL(src.attribute_1, '')
             OR  ISNULL(tgt.attribute_2, '') <> ISNULL(src.attribute_2, '')
             OR  tgt.is_active <> 1
             )
 
-    SET @RowsUpdated = @@ROWCOUNT;
+    SET @rows_updated = @@ROWCOUNT
 
     -- ========================================================================
     -- INSERT: New records
     -- ========================================================================
-    WITH source_rows AS
+    ;WITH source_rows AS
     (
         SELECT  src.natural_key,
                 src.attribute_1,
                 src.attribute_2
-        FROM    staging.SOURCE_TABLE    src
-        WHERE   src.load_batch_id = @LoadBatchId
+        FROM    staging.source_table    src
+        WHERE   src.load_batch_id = @load_batch_id
         AND     src.natural_key IS NOT NULL
     )
-    INSERT INTO dimension.TARGET_DIM
+    INSERT INTO dimension.target_dim
             (natural_key, attribute_1, attribute_2)
     SELECT  src.natural_key, src.attribute_1, src.attribute_2
     FROM    source_rows AS src
     WHERE NOT EXISTS  (
                         SELECT 1
-                        FROM dimension.TARGET_DIM AS tgt
+                        FROM dimension.target_dim AS tgt
                         WHERE tgt.natural_key = src.natural_key
-                    );
+                    )
 
-    SET @RowsInserted = @@ROWCOUNT;
+    SET @rows_inserted = @@ROWCOUNT
 
     -- Log success and commit
-    EXEC audit.P_END_LOAD_BATCH @LoadBatchId, 'Succeeded', @RowsInserted, @RowsUpdated, NULL;
-    COMMIT TRANSACTION;
+    EXEC audit.P_END_LOAD_BATCH @load_batch_id, 'Succeeded', @rows_inserted, @rows_updated, NULL
+    COMMIT TRANSACTION
 END TRY
 BEGIN CATCH
-    DECLARE @ErrorMessage NVARCHAR(MAX) = ERROR_MESSAGE();
+    DECLARE @error_message NVARCHAR(MAX) = ERROR_MESSAGE()
 
     -- Rollback and log failure
-    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-    EXEC audit.P_END_LOAD_BATCH @LoadBatchId, 'Failed', @RowsInserted, @RowsUpdated, @ErrorMessage;
-    THROW;
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION
+    EXEC audit.P_END_LOAD_BATCH @load_batch_id, 'Failed', @rows_inserted, @rows_updated, @error_message
+    THROW
 END CATCH
 
 GO
@@ -404,11 +493,12 @@ GO
 **ETL Template Guidelines:**
 * Use CTEs (WITH statements) to define source rows with filtering logic
 * Separate UPDATE and INSERT operations into distinct sections
-* Update both data attributes AND metadata columns (is_active, modified_date)
+* Update both data attributes AND metadata columns (`is_active`, `modified_date`)
 * Include change detection logic in WHERE clause to avoid unnecessary updates
 * Use NOT EXISTS to prevent duplicate inserts
 * Always call audit.P_END_LOAD_BATCH with appropriate status and row counts
-* Use camelCase for parameter names (@LoadBatchId) and variable names (@RowsInserted, @RowsUpdated)
+* Use lowercase snake_case for parameter names (`@load_batch_id`) and variable names (`@rows_inserted`, `@rows_updated`)
+* Use Kimball-style lowercase table and column names in stored procedures, views, functions, and ETL mappings
 * Indent SQL keywords and table aliases for readability (FROM, WHERE, JOIN on separate lines)
 * Rollback transaction and log errors in CATCH block
 
@@ -421,7 +511,7 @@ GO
 * Create indexes only when there is a clear query or join benefit.
 * Choose clustered indexes intentionally.
 * Document non-obvious indexes with comments.
-* Use consistent naming: `PK_`, `CX_`, `IX_`, `FK_`, `UQ_`, `CK_` prefixes
+* Use consistent naming: `_pk`, `_cx`, `_ix`, `_fk`, `_uq`, `_ck` suffixes
 
 ---
 
@@ -431,7 +521,7 @@ All ETL procedures must:
 
 * Support reruns.
 * Prevent duplicate records.
-* Log execution activity to audit.LOAD_BATCH.
+* Log execution activity to `audit.load_batch`.
 * Use TRY/CATCH error handling.
 * Use transactions where appropriate.
 * Validate source data before loading warehouse tables.

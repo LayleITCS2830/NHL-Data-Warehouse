@@ -2,7 +2,7 @@ USE NHLDataWarehouse;
 GO
 
 CREATE OR ALTER PROCEDURE dimension.P_LOAD_DIM_TEAM
-    @LoadBatchID UNIQUEIDENTIFIER
+    @load_batch_id UNIQUEIDENTIFIER
 AS
 /*****************************************************************************************
 PROC:	dimension.P_LOAD_DIM_TEAM
@@ -10,75 +10,75 @@ AUTHOR:	Andrew Layle
 DATE:	06/09/2026
 
 DESCRIPTION:
-    Loads team records from staging.TEAM_RAW into dimension.TEAM_DIM. Updates changed
-    teams and inserts new teams while preserving the source TeamID natural key.
+    Loads team records from staging.team_raw into dimension.team_dim. Updates changed
+    teams and inserts new teams while preserving the source team_id natural key.
 
 INPUT PARAMETERS:
-    @LoadBatchID UNIQUEIDENTIFIER - The load batch identifier used to filter source rows.
+    @load_batch_id UNIQUEIDENTIFIER - The load batch identifier used to filter source rows.
 
 *****************************************************************************************/
-BEGIN
-    SET NOCOUNT ON;
-    SET XACT_ABORT ON;
 
-    DECLARE @RowsInserted INT = 0,
-            @RowsUpdated INT = 0;
+SET NOCOUNT ON
+SET XACT_ABORT ON
 
-    BEGIN TRY
-        BEGIN TRANSACTION;
+DECLARE @rows_inserted INT = 0,
+        @rows_updated INT = 0
 
-        UPDATE tgt
-        SET TeamName = src.TeamName,
-            TeamAbbreviation = src.TeamAbbreviation,
-            Conference = src.Conference,
-            Division = src.Division,
-            IsActive = 1,
-            ModifiedDate = SYSUTCDATETIME()
-        FROM dimension.TEAM_DIM AS tgt
-        INNER JOIN staging.TEAM_RAW AS src
-            ON src.TeamID = tgt.TeamID
-        WHERE src.LoadBatchID = @LoadBatchID
-          AND src.TeamID IS NOT NULL
-          AND src.TeamName IS NOT NULL
-          AND (
-                ISNULL(tgt.TeamName, '') <> ISNULL(src.TeamName, '')
-             OR ISNULL(tgt.TeamAbbreviation, '') <> ISNULL(src.TeamAbbreviation, '')
-             OR ISNULL(tgt.Conference, '') <> ISNULL(src.Conference, '')
-             OR ISNULL(tgt.Division, '') <> ISNULL(src.Division, '')
-             OR tgt.IsActive <> 1
-          );
+BEGIN TRY
+    BEGIN TRANSACTION
 
-        SET @RowsUpdated = @@ROWCOUNT;
+    UPDATE tgt
+    SET team_name = src.team_name,
+        team_abbreviation = src.team_abbreviation,
+        conference = src.conference,
+        division = src.division,
+        is_active = 1,
+        modified_date = SYSUTCDATETIME()
+    FROM    dimension.team_dim  tgt
+    JOIN    staging.team_raw    src ON  src.team_id = tgt.team_id
+    WHERE   src.load_batch_id = @load_batch_id
+    AND     src.team_id IS NOT NULL
+    AND     src.team_name IS NOT NULL
+    AND     (   ISNULL(tgt.team_name, '') <> ISNULL(src.team_name, '')
+            OR  ISNULL(tgt.team_abbreviation, '') <> ISNULL(src.team_abbreviation, '')
+            OR  ISNULL(tgt.conference, '') <> ISNULL(src.conference, '')
+            OR  ISNULL(tgt.division, '') <> ISNULL(src.division, '')
+            OR  tgt.is_active <> 1
+        )
 
-        INSERT INTO dimension.TEAM_DIM
-            (TeamID, TeamName, TeamAbbreviation, Conference, Division)
-        SELECT src.TeamID,
-               src.TeamName,
-               src.TeamAbbreviation,
-               src.Conference,
-               src.Division
-        FROM staging.TEAM_RAW AS src
-        WHERE src.LoadBatchID = @LoadBatchID
-          AND src.TeamID IS NOT NULL
-          AND src.TeamName IS NOT NULL
-          AND NOT EXISTS
-          (
-              SELECT 1
-              FROM dimension.TEAM_DIM AS tgt
-              WHERE tgt.TeamID = src.TeamID
-          );
+    SET @rows_updated = @@ROWCOUNT
 
-        SET @RowsInserted = @@ROWCOUNT;
+    INSERT INTO dimension.team_dim
+            (team_id, 
+            team_name,
+            team_abbreviation, 
+            conference, 
+            division)
+    SELECT  src.team_id,
+            src.team_name,
+            src.team_abbreviation,
+            src.conference,
+            src.division
+    FROM    staging.team_raw   src
+    WHERE   src.load_batch_id = @load_batch_id
+    AND     src.team_id IS NOT NULL
+    AND     src.team_name IS NOT NULL
+    AND     NOT EXISTS  (
+                            SELECT  1
+                            FROM    dimension.team_dim      tgt
+                            WHERE   tgt.team_id = src.team_id
+                        )
 
-        EXEC audit.P_END_LOAD_BATCH @LoadBatchID, 'Succeeded', @RowsInserted, @RowsUpdated, NULL;
-        COMMIT TRANSACTION;
-    END TRY
-    BEGIN CATCH
-        DECLARE @ErrorMessage NVARCHAR(MAX) = ERROR_MESSAGE();
+    SET @rows_inserted = @@ROWCOUNT
 
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        EXEC audit.P_END_LOAD_BATCH @LoadBatchID, 'Failed', @RowsInserted, @RowsUpdated, @ErrorMessage;
-        THROW;
-    END CATCH
-END
+    EXEC audit.P_END_LOAD_BATCH @load_batch_id, 'Succeeded', @rows_inserted, @rows_updated, NULL
+    COMMIT TRANSACTION
+END TRY
+BEGIN CATCH
+    DECLARE @error_message NVARCHAR(MAX) = ERROR_MESSAGE()
+
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+    EXEC audit.P_END_LOAD_BATCH @load_batch_id, 'Failed', @rows_inserted, @rows_updated, @error_message
+    THROW
+END CATCH
 GO

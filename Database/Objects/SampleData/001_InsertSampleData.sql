@@ -11,211 +11,211 @@ DECLARE @GameLoadBatchID UNIQUEIDENTIFIER = '33333333-3333-3333-3333-33333333333
 DECLARE @PlayerGameStatsLoadBatchID UNIQUEIDENTIFIER = '44444444-4444-4444-4444-444444444444';
 
 -- Reset fixed sample load batches so audit output reflects the latest sample run.
-IF NOT EXISTS (SELECT 1 FROM audit.LOAD_BATCH WHERE LoadBatchID = @TeamLoadBatchID)
+IF NOT EXISTS (SELECT 1 FROM audit.LOAD_BATCH WHERE LOAD_BATCH_ID = @TeamLoadBatchID)
 BEGIN
-    INSERT INTO audit.LOAD_BATCH (LoadBatchID, SourceSystem, Status)
+    INSERT INTO audit.LOAD_BATCH (LOAD_BATCH_ID, SOURCE_SYSTEM, STATUS)
     VALUES (@TeamLoadBatchID, 'Sample Data', 'Started');
 END
 ELSE
 BEGIN
     UPDATE audit.LOAD_BATCH
-    SET LoadStartDate = SYSUTCDATETIME(),
-        LoadEndDate = NULL,
-        Status = 'Started',
-        RowsInserted = NULL,
-        RowsUpdated = NULL,
-        ErrorMessage = NULL
-    WHERE LoadBatchID = @TeamLoadBatchID;
+    SET LOAD_START_DATE = SYSUTCDATETIME(),
+        LOAD_END_DATE = NULL,
+        STATUS = 'Started',
+        ROWS_INSERTED = NULL,
+        ROWS_UPDATED = NULL,
+        ERROR_MESSAGE = NULL
+    WHERE LOAD_BATCH_ID = @TeamLoadBatchID;
 END
 
-IF NOT EXISTS (SELECT 1 FROM audit.LOAD_BATCH WHERE LoadBatchID = @PlayerLoadBatchID)
+IF NOT EXISTS (SELECT 1 FROM audit.LOAD_BATCH WHERE LOAD_BATCH_ID = @PlayerLoadBatchID)
 BEGIN
-    INSERT INTO audit.LOAD_BATCH (LoadBatchID, SourceSystem, Status)
+    INSERT INTO audit.LOAD_BATCH (LOAD_BATCH_ID, SOURCE_SYSTEM, STATUS)
     VALUES (@PlayerLoadBatchID, 'Sample Data', 'Started');
 END
 ELSE
 BEGIN
     UPDATE audit.LOAD_BATCH
-    SET LoadStartDate = SYSUTCDATETIME(),
-        LoadEndDate = NULL,
-        Status = 'Started',
-        RowsInserted = NULL,
-        RowsUpdated = NULL,
-        ErrorMessage = NULL
-    WHERE LoadBatchID = @PlayerLoadBatchID;
+    SET LOAD_START_DATE = SYSUTCDATETIME(),
+        LOAD_END_DATE = NULL,
+        STATUS = 'Started',
+        ROWS_INSERTED = NULL,
+        ROWS_UPDATED = NULL,
+        ERROR_MESSAGE = NULL
+    WHERE LOAD_BATCH_ID = @PlayerLoadBatchID;
 END
 
-IF NOT EXISTS (SELECT 1 FROM audit.LOAD_BATCH WHERE LoadBatchID = @GameLoadBatchID)
+IF NOT EXISTS (SELECT 1 FROM audit.LOAD_BATCH WHERE LOAD_BATCH_ID = @GameLoadBatchID)
 BEGIN
-    INSERT INTO audit.LOAD_BATCH (LoadBatchID, SourceSystem, Status)
+    INSERT INTO audit.LOAD_BATCH (LOAD_BATCH_ID, SOURCE_SYSTEM, STATUS)
     VALUES (@GameLoadBatchID, 'Sample Data', 'Started');
 END
 ELSE
 BEGIN
     UPDATE audit.LOAD_BATCH
-    SET LoadStartDate = SYSUTCDATETIME(),
-        LoadEndDate = NULL,
-        Status = 'Started',
-        RowsInserted = NULL,
-        RowsUpdated = NULL,
-        ErrorMessage = NULL
-    WHERE LoadBatchID = @GameLoadBatchID;
+    SET LOAD_START_DATE = SYSUTCDATETIME(),
+        LOAD_END_DATE = NULL,
+        STATUS = 'Started',
+        ROWS_INSERTED = NULL,
+        ROWS_UPDATED = NULL,
+        ERROR_MESSAGE = NULL
+    WHERE LOAD_BATCH_ID = @GameLoadBatchID;
 END
 
-IF NOT EXISTS (SELECT 1 FROM audit.LOAD_BATCH WHERE LoadBatchID = @PlayerGameStatsLoadBatchID)
+IF NOT EXISTS (SELECT 1 FROM audit.LOAD_BATCH WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID)
 BEGIN
-    INSERT INTO audit.LOAD_BATCH (LoadBatchID, SourceSystem, Status)
+    INSERT INTO audit.LOAD_BATCH (LOAD_BATCH_ID, SOURCE_SYSTEM, STATUS)
     VALUES (@PlayerGameStatsLoadBatchID, 'Sample Data', 'Started');
 END
 ELSE
 BEGIN
     UPDATE audit.LOAD_BATCH
-    SET LoadStartDate = SYSUTCDATETIME(),
-        LoadEndDate = NULL,
-        Status = 'Started',
-        RowsInserted = NULL,
-        RowsUpdated = NULL,
-        ErrorMessage = NULL
-    WHERE LoadBatchID = @PlayerGameStatsLoadBatchID;
+    SET LOAD_START_DATE = SYSUTCDATETIME(),
+        LOAD_END_DATE = NULL,
+        STATUS = 'Started',
+        ROWS_INSERTED = NULL,
+        ROWS_UPDATED = NULL,
+        ERROR_MESSAGE = NULL
+    WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID;
 END
 
 -- Stage sample teams.
 INSERT INTO staging.TEAM_RAW
-    (LoadBatchID, RawJson, TeamID, TeamName, TeamAbbreviation, Conference, Division)
+    (LOAD_BATCH_ID, RAW_JSON, TEAM_ID, TEAM_NAME, TEAM_ABBREVIATION, CONFERENCE, DIVISION)
 SELECT @TeamLoadBatchID, '{"teamId":6,"name":"Boston Bruins"}', 6, 'Boston Bruins', 'BOS', 'Eastern', 'Atlantic'
-WHERE NOT EXISTS (SELECT 1 FROM staging.TEAM_RAW WHERE LoadBatchID = @TeamLoadBatchID AND TeamID = 6);
+WHERE NOT EXISTS (SELECT 1 FROM staging.TEAM_RAW WHERE LOAD_BATCH_ID = @TeamLoadBatchID AND TEAM_ID = 6);
 
 INSERT INTO staging.TEAM_RAW
-    (LoadBatchID, RawJson, TeamID, TeamName, TeamAbbreviation, Conference, Division)
+    (LOAD_BATCH_ID, RAW_JSON, TEAM_ID, TEAM_NAME, TEAM_ABBREVIATION, CONFERENCE, DIVISION)
 SELECT @TeamLoadBatchID, '{"teamId":10,"name":"Toronto Maple Leafs"}', 10, 'Toronto Maple Leafs', 'TOR', 'Eastern', 'Atlantic'
-WHERE NOT EXISTS (SELECT 1 FROM staging.TEAM_RAW WHERE LoadBatchID = @TeamLoadBatchID AND TeamID = 10);
+WHERE NOT EXISTS (SELECT 1 FROM staging.TEAM_RAW WHERE LOAD_BATCH_ID = @TeamLoadBatchID AND TEAM_ID = 10);
 
 INSERT INTO staging.TEAM_RAW
-    (LoadBatchID, RawJson, TeamID, TeamName, TeamAbbreviation, Conference, Division)
+    (LOAD_BATCH_ID, RAW_JSON, TEAM_ID, TEAM_NAME, TEAM_ABBREVIATION, CONFERENCE, DIVISION)
 SELECT @TeamLoadBatchID, '{"teamId":3,"name":"New York Rangers"}', 3, 'New York Rangers', 'NYR', 'Eastern', 'Metropolitan'
-WHERE NOT EXISTS (SELECT 1 FROM staging.TEAM_RAW WHERE LoadBatchID = @TeamLoadBatchID AND TeamID = 3);
+WHERE NOT EXISTS (SELECT 1 FROM staging.TEAM_RAW WHERE LOAD_BATCH_ID = @TeamLoadBatchID AND TEAM_ID = 3);
 
 INSERT INTO staging.TEAM_RAW
-    (LoadBatchID, RawJson, TeamID, TeamName, TeamAbbreviation, Conference, Division)
+    (LOAD_BATCH_ID, RAW_JSON, TEAM_ID, TEAM_NAME, TEAM_ABBREVIATION, CONFERENCE, DIVISION)
 SELECT @TeamLoadBatchID, '{"teamId":14,"name":"Tampa Bay Lightning"}', 14, 'Tampa Bay Lightning', 'TBL', 'Eastern', 'Atlantic'
-WHERE NOT EXISTS (SELECT 1 FROM staging.TEAM_RAW WHERE LoadBatchID = @TeamLoadBatchID AND TeamID = 14);
+WHERE NOT EXISTS (SELECT 1 FROM staging.TEAM_RAW WHERE LOAD_BATCH_ID = @TeamLoadBatchID AND TEAM_ID = 14);
 
 -- Stage sample players.
 INSERT INTO staging.PLAYER_RAW
-    (LoadBatchID, RawJson, PlayerID, TeamID, FirstName, LastName, FullName, PositionCode, ShootsCatches, BirthDate)
+    (LOAD_BATCH_ID, RAW_JSON, PLAYER_ID, TEAM_ID, FIRST_NAME, LAST_NAME, FULL_NAME, POSITION_CODE, SHOOTS_CATCHES, BIRTH_DATE)
 SELECT @PlayerLoadBatchID, '{"playerId":8478403,"fullName":"David Pastrnak"}', 8478403, 6, 'David', 'Pastrnak', 'David Pastrnak', 'RW', 'R', '1996-05-25'
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LoadBatchID = @PlayerLoadBatchID AND PlayerID = 8478403);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LOAD_BATCH_ID = @PlayerLoadBatchID AND PLAYER_ID = 8478403);
 
 INSERT INTO staging.PLAYER_RAW
-    (LoadBatchID, RawJson, PlayerID, TeamID, FirstName, LastName, FullName, PositionCode, ShootsCatches, BirthDate)
+    (LOAD_BATCH_ID, RAW_JSON, PLAYER_ID, TEAM_ID, FIRST_NAME, LAST_NAME, FULL_NAME, POSITION_CODE, SHOOTS_CATCHES, BIRTH_DATE)
 SELECT @PlayerLoadBatchID, '{"playerId":8473419,"fullName":"Brad Marchand"}', 8473419, 6, 'Brad', 'Marchand', 'Brad Marchand', 'LW', 'L', '1988-05-11'
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LoadBatchID = @PlayerLoadBatchID AND PlayerID = 8473419);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LOAD_BATCH_ID = @PlayerLoadBatchID AND PLAYER_ID = 8473419);
 
 INSERT INTO staging.PLAYER_RAW
-    (LoadBatchID, RawJson, PlayerID, TeamID, FirstName, LastName, FullName, PositionCode, ShootsCatches, BirthDate)
+    (LOAD_BATCH_ID, RAW_JSON, PLAYER_ID, TEAM_ID, FIRST_NAME, LAST_NAME, FULL_NAME, POSITION_CODE, SHOOTS_CATCHES, BIRTH_DATE)
 SELECT @PlayerLoadBatchID, '{"playerId":8479318,"fullName":"Auston Matthews"}', 8479318, 10, 'Auston', 'Matthews', 'Auston Matthews', 'C', 'R', '1997-09-17'
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LoadBatchID = @PlayerLoadBatchID AND PlayerID = 8479318);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LOAD_BATCH_ID = @PlayerLoadBatchID AND PLAYER_ID = 8479318);
 
 INSERT INTO staging.PLAYER_RAW
-    (LoadBatchID, RawJson, PlayerID, TeamID, FirstName, LastName, FullName, PositionCode, ShootsCatches, BirthDate)
+    (LOAD_BATCH_ID, RAW_JSON, PLAYER_ID, TEAM_ID, FIRST_NAME, LAST_NAME, FULL_NAME, POSITION_CODE, SHOOTS_CATCHES, BIRTH_DATE)
 SELECT @PlayerLoadBatchID, '{"playerId":8478483,"fullName":"Mitch Marner"}', 8478483, 10, 'Mitch', 'Marner', 'Mitch Marner', 'RW', 'R', '1997-05-05'
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LoadBatchID = @PlayerLoadBatchID AND PlayerID = 8478483);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LOAD_BATCH_ID = @PlayerLoadBatchID AND PLAYER_ID = 8478483);
 
 INSERT INTO staging.PLAYER_RAW
-    (LoadBatchID, RawJson, PlayerID, TeamID, FirstName, LastName, FullName, PositionCode, ShootsCatches, BirthDate)
+    (LOAD_BATCH_ID, RAW_JSON, PLAYER_ID, TEAM_ID, FIRST_NAME, LAST_NAME, FULL_NAME, POSITION_CODE, SHOOTS_CATCHES, BIRTH_DATE)
 SELECT @PlayerLoadBatchID, '{"playerId":8478048,"fullName":"Artemi Panarin"}', 8478048, 3, 'Artemi', 'Panarin', 'Artemi Panarin', 'LW', 'R', '1991-10-30'
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LoadBatchID = @PlayerLoadBatchID AND PlayerID = 8478048);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LOAD_BATCH_ID = @PlayerLoadBatchID AND PLAYER_ID = 8478048);
 
 INSERT INTO staging.PLAYER_RAW
-    (LoadBatchID, RawJson, PlayerID, TeamID, FirstName, LastName, FullName, PositionCode, ShootsCatches, BirthDate)
+    (LOAD_BATCH_ID, RAW_JSON, PLAYER_ID, TEAM_ID, FIRST_NAME, LAST_NAME, FULL_NAME, POSITION_CODE, SHOOTS_CATCHES, BIRTH_DATE)
 SELECT @PlayerLoadBatchID, '{"playerId":8480069,"fullName":"Adam Fox"}', 8480069, 3, 'Adam', 'Fox', 'Adam Fox', 'D', 'R', '1998-02-17'
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LoadBatchID = @PlayerLoadBatchID AND PlayerID = 8480069);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LOAD_BATCH_ID = @PlayerLoadBatchID AND PLAYER_ID = 8480069);
 
 INSERT INTO staging.PLAYER_RAW
-    (LoadBatchID, RawJson, PlayerID, TeamID, FirstName, LastName, FullName, PositionCode, ShootsCatches, BirthDate)
+    (LOAD_BATCH_ID, RAW_JSON, PLAYER_ID, TEAM_ID, FIRST_NAME, LAST_NAME, FULL_NAME, POSITION_CODE, SHOOTS_CATCHES, BIRTH_DATE)
 SELECT @PlayerLoadBatchID, '{"playerId":8476453,"fullName":"Nikita Kucherov"}', 8476453, 14, 'Nikita', 'Kucherov', 'Nikita Kucherov', 'RW', 'L', '1993-06-17'
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LoadBatchID = @PlayerLoadBatchID AND PlayerID = 8476453);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LOAD_BATCH_ID = @PlayerLoadBatchID AND PLAYER_ID = 8476453);
 
 INSERT INTO staging.PLAYER_RAW
-    (LoadBatchID, RawJson, PlayerID, TeamID, FirstName, LastName, FullName, PositionCode, ShootsCatches, BirthDate)
+    (LOAD_BATCH_ID, RAW_JSON, PLAYER_ID, TEAM_ID, FIRST_NAME, LAST_NAME, FULL_NAME, POSITION_CODE, SHOOTS_CATCHES, BIRTH_DATE)
 SELECT @PlayerLoadBatchID, '{"playerId":8475167,"fullName":"Victor Hedman"}', 8475167, 14, 'Victor', 'Hedman', 'Victor Hedman', 'D', 'L', '1990-12-18'
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LoadBatchID = @PlayerLoadBatchID AND PlayerID = 8475167);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_RAW WHERE LOAD_BATCH_ID = @PlayerLoadBatchID AND PLAYER_ID = 8475167);
 
 -- Stage sample games.
 INSERT INTO staging.GAME_RAW
-    (LoadBatchID, RawJson, GameID, GameDate, Season, GameType, HomeTeamID, AwayTeamID, HomeGoals, AwayGoals, HomeShots, AwayShots)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, GAME_DATE, SEASON, GAME_TYPE, HOME_TEAM_ID, AWAY_TEAM_ID, HOME_GOALS, AWAY_GOALS, HOME_SHOTS, AWAY_SHOTS)
 SELECT @GameLoadBatchID, '{"gameId":2024020001}', 2024020001, '2024-10-05', '20242025', 'Regular', 6, 10, 4, 2, 32, 28
-WHERE NOT EXISTS (SELECT 1 FROM staging.GAME_RAW WHERE LoadBatchID = @GameLoadBatchID AND GameID = 2024020001);
+WHERE NOT EXISTS (SELECT 1 FROM staging.GAME_RAW WHERE LOAD_BATCH_ID = @GameLoadBatchID AND GAME_ID = 2024020001);
 
 INSERT INTO staging.GAME_RAW
-    (LoadBatchID, RawJson, GameID, GameDate, Season, GameType, HomeTeamID, AwayTeamID, HomeGoals, AwayGoals, HomeShots, AwayShots)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, GAME_DATE, SEASON, GAME_TYPE, HOME_TEAM_ID, AWAY_TEAM_ID, HOME_GOALS, AWAY_GOALS, HOME_SHOTS, AWAY_SHOTS)
 SELECT @GameLoadBatchID, '{"gameId":2024020002}', 2024020002, '2024-10-08', '20242025', 'Regular', 3, 14, 3, 5, 29, 34
-WHERE NOT EXISTS (SELECT 1 FROM staging.GAME_RAW WHERE LoadBatchID = @GameLoadBatchID AND GameID = 2024020002);
+WHERE NOT EXISTS (SELECT 1 FROM staging.GAME_RAW WHERE LOAD_BATCH_ID = @GameLoadBatchID AND GAME_ID = 2024020002);
 
 INSERT INTO staging.GAME_RAW
-    (LoadBatchID, RawJson, GameID, GameDate, Season, GameType, HomeTeamID, AwayTeamID, HomeGoals, AwayGoals, HomeShots, AwayShots)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, GAME_DATE, SEASON, GAME_TYPE, HOME_TEAM_ID, AWAY_TEAM_ID, HOME_GOALS, AWAY_GOALS, HOME_SHOTS, AWAY_SHOTS)
 SELECT @GameLoadBatchID, '{"gameId":2024020003}', 2024020003, '2024-10-12', '20242025', 'Regular', 10, 3, 2, 3, 31, 27
-WHERE NOT EXISTS (SELECT 1 FROM staging.GAME_RAW WHERE LoadBatchID = @GameLoadBatchID AND GameID = 2024020003);
+WHERE NOT EXISTS (SELECT 1 FROM staging.GAME_RAW WHERE LOAD_BATCH_ID = @GameLoadBatchID AND GAME_ID = 2024020003);
 
 -- Stage sample player game statistics.
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020001,"playerId":8478403}', 2024020001, 8478403, 6, 2, 1, 6, 1, 0, 0, 1210
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020001 AND PlayerID = 8478403);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020001 AND PLAYER_ID = 8478403);
 
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020001,"playerId":8473419}', 2024020001, 8473419, 6, 1, 1, 4, 2, 0, 2, 1165
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020001 AND PlayerID = 8473419);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020001 AND PLAYER_ID = 8473419);
 
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020001,"playerId":8479318}', 2024020001, 8479318, 10, 1, 0, 5, 1, 1, 0, 1198
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020001 AND PlayerID = 8479318);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020001 AND PLAYER_ID = 8479318);
 
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020001,"playerId":8478483}', 2024020001, 8478483, 10, 0, 1, 3, 0, 1, 0, 1180
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020001 AND PlayerID = 8478483);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020001 AND PLAYER_ID = 8478483);
 
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020002,"playerId":8478048}', 2024020002, 8478048, 3, 1, 1, 5, 0, 0, 0, 1225
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020002 AND PlayerID = 8478048);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020002 AND PLAYER_ID = 8478048);
 
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020002,"playerId":8480069}', 2024020002, 8480069, 3, 0, 2, 2, 1, 3, 0, 1440
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020002 AND PlayerID = 8480069);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020002 AND PLAYER_ID = 8480069);
 
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020002,"playerId":8476453}', 2024020002, 8476453, 14, 2, 2, 7, 0, 0, 0, 1264
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020002 AND PlayerID = 8476453);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020002 AND PLAYER_ID = 8476453);
 
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020002,"playerId":8475167}', 2024020002, 8475167, 14, 1, 1, 3, 1, 4, 2, 1512
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020002 AND PlayerID = 8475167);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020002 AND PLAYER_ID = 8475167);
 
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020003,"playerId":8479318}', 2024020003, 8479318, 10, 1, 0, 6, 1, 0, 0, 1205
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020003 AND PlayerID = 8479318);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020003 AND PLAYER_ID = 8479318);
 
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020003,"playerId":8478483}', 2024020003, 8478483, 10, 0, 2, 4, 0, 1, 0, 1176
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020003 AND PlayerID = 8478483);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020003 AND PLAYER_ID = 8478483);
 
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020003,"playerId":8478048}', 2024020003, 8478048, 3, 1, 2, 5, 1, 0, 0, 1248
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020003 AND PlayerID = 8478048);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020003 AND PLAYER_ID = 8478048);
 
 INSERT INTO staging.PLAYER_GAME_STATS_RAW
-    (LoadBatchID, RawJson, GameID, PlayerID, TeamID, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
+    (LOAD_BATCH_ID, RAW_JSON, GAME_ID, PLAYER_ID, TEAM_ID, GOALS, ASSISTS, SHOTS, HITS, BLOCKS, PENALTY_MINUTES, TIME_ON_ICE_SECONDS)
 SELECT @PlayerGameStatsLoadBatchID, '{"gameId":2024020003,"playerId":8480069}', 2024020003, 8480069, 3, 0, 1, 2, 1, 2, 0, 1422
-WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LoadBatchID = @PlayerGameStatsLoadBatchID AND GameID = 2024020003 AND PlayerID = 8480069);
+WHERE NOT EXISTS (SELECT 1 FROM staging.PLAYER_GAME_STATS_RAW WHERE LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID AND GAME_ID = 2024020003 AND PLAYER_ID = 8480069);
 
 GO

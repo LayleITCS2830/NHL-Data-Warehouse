@@ -1,28 +1,24 @@
 USE NHLDataWarehouse;
 GO
 
-CREATE OR ALTER VIEW reporting.vw_player_season_summary
+CREATE OR ALTER VIEW reporting.V_PLAYER_SEASON_SUMMARY
 AS
-SELECT
-    g.Season AS [Season],
-    t.TeamName AS [Team],
-    p.FullName AS [Player],
-    p.PositionCode AS [Position],
-    COUNT(*) AS [Games Played],
-    SUM(s.Goals) AS [Goals],
-    SUM(s.Assists) AS [Assists],
-    SUM(s.Points) AS [Points],
-    SUM(s.Shots) AS [Shots],
-    SUM(s.Hits) AS [Hits],
-    SUM(s.Blocks) AS [Blocks],
-    SUM(s.PenaltyMinutes) AS [Penalty Minutes],
-    SUM(COALESCE(s.TimeOnIceSeconds, 0)) AS [Time On Ice Seconds]
-FROM fact.PLAYER_GAME_STATS_FACT AS s
-INNER JOIN fact.GAME_FACT AS g
-    ON g.GameKey = s.GameKey
-INNER JOIN dimension.PLAYER_DIM AS p
-    ON p.PlayerKey = s.PlayerKey
-INNER JOIN dimension.TEAM_DIM AS t
-    ON t.TeamKey = s.TeamKey
-GROUP BY g.Season, t.TeamName, p.FullName, p.PositionCode;
+SELECT  g.season AS [Season],
+        t.team_name AS [Team],
+        p.full_name AS [Player],
+        p.position_code AS [Position],
+        COUNT(*) AS [Games Played],
+        SUM(s.goals) AS [Goals],
+        SUM(s.assists) AS [Assists],
+        SUM(s.points) AS [Points],
+        SUM(s.shots) AS [Shots],
+        SUM(s.hits) AS [Hits],
+        SUM(s.blocks) AS [Blocks],
+        SUM(s.penalty_minutes) AS [Penalty Minutes],
+        SUM(COALESCE(s.time_on_ice_seconds, 0)) AS [Time On Ice Seconds]
+FROM    fact.player_game_stats_fact     s
+JOIN    fact.game_fact                  g   ON  g.game_key = s.game_key
+JOIN    dimension.player_dim            p   ON  p.player_key = s.player_key
+JOIN    dimension.team_dim              t   ON  t.team_key = s.team_key
+GROUP BY g.season, t.team_name, p.full_name, p.position_code;
 GO

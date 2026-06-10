@@ -18,31 +18,31 @@ EXEC dimension.P_POPULATE_DATE_DIMENSION
 
 -- Load dimensions before facts.
 EXEC dimension.P_LOAD_DIM_TEAM
-    @LoadBatchID = @TeamLoadBatchID;
+    @LOAD_BATCH_ID = @TeamLoadBatchID;
 
 EXEC dimension.P_LOAD_DIM_PLAYER
-    @LoadBatchID = @PlayerLoadBatchID;
+    @LOAD_BATCH_ID = @PlayerLoadBatchID;
 
 -- Load facts after referenced dates, teams, and players exist.
 EXEC fact.P_LOAD_FACT_GAME
-    @LoadBatchID = @GameLoadBatchID;
+    @LOAD_BATCH_ID = @GameLoadBatchID;
 
 EXEC fact.P_LOAD_FACT_PLAYER_GAME_STATS
-    @LoadBatchID = @PlayerGameStatsLoadBatchID;
+    @LOAD_BATCH_ID = @PlayerGameStatsLoadBatchID;
 
 -- Show sample load results for a quick sanity check after execution.
-SELECT SourceSystem,
-       Status,
-       RowsInserted,
-       RowsUpdated,
-       ErrorMessage
+SELECT SOURCE_SYSTEM,
+       STATUS,
+       ROWS_INSERTED,
+       ROWS_UPDATED,
+       ERROR_MESSAGE
 FROM audit.LOAD_BATCH
-WHERE LoadBatchID IN
+WHERE LOAD_BATCH_ID IN
 (
     @TeamLoadBatchID,
     @PlayerLoadBatchID,
     @GameLoadBatchID,
     @PlayerGameStatsLoadBatchID
 )
-ORDER BY LoadStartDate;
+ORDER BY LOAD_START_DATE;
 GO

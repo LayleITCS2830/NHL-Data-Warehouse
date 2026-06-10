@@ -9,16 +9,16 @@
 :r .\002_CreateSchemas.sql
 
 -- Create tables
-:r ".\Objects\Tables\audit.LOAD_BATCH.sql"
-:r ".\Objects\Tables\dimension.DATE_DIM.sql"
-:r ".\Objects\Tables\dimension.TEAM_DIM.sql"
-:r ".\Objects\Tables\dimension.PLAYER_DIM.sql"
-:r ".\Objects\Tables\fact.GAME_FACT.sql"
-:r ".\Objects\Tables\fact.PLAYER_GAME_STATS_FACT.sql"
-:r ".\Objects\Tables\staging.GAME_RAW.sql"
-:r ".\Objects\Tables\staging.PLAYER_RAW.sql"
-:r ".\Objects\Tables\staging.PLAYER_GAME_STATS_RAW.sql"
-:r ".\Objects\Tables\staging.TEAM_RAW.sql"
+:r ".\Objects\Tables\audit.load_batch.sql"
+:r ".\Objects\Tables\dimension.date_dim.sql"
+:r ".\Objects\Tables\dimension.team_dim.sql"
+:r ".\Objects\Tables\dimension.player_dim.sql"
+:r ".\Objects\Tables\fact.game_fact.sql"
+:r ".\Objects\Tables\fact.player_game_stats_fact.sql"
+:r ".\Objects\Tables\staging.game_raw.sql"
+:r ".\Objects\Tables\staging.player_raw.sql"
+:r ".\Objects\Tables\staging.player_game_stats_raw.sql"
+:r ".\Objects\Tables\staging.team_raw.sql"
 
 -- Create stored procedures
 :r ".\Objects\Stored Procedures\audit.P_START_LOAD_BATCH.sql"
