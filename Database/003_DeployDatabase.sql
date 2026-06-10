@@ -9,31 +9,31 @@
 :r .\002_CreateSchemas.sql
 
 -- Create tables
-:r ".\Objects\Tables\Audit.LoadBatch.sql"
-:r ".\Objects\Tables\Dimension.Date.sql"
-:r ".\Objects\Tables\Dimension.Team.sql"
-:r ".\Objects\Tables\Dimension.Player.sql"
-:r ".\Objects\Tables\Fact.Game.sql"
-:r ".\Objects\Tables\Fact.PlayerGameStats.sql"
-:r ".\Objects\Tables\Staging.GameRaw.sql"
-:r ".\Objects\Tables\Staging.PlayerRaw.sql"
-:r ".\Objects\Tables\Staging.PlayerGameStatsRaw.sql"
-:r ".\Objects\Tables\Staging.TeamRaw.sql"
+:r ".\Objects\Tables\audit.LOAD_BATCH.sql"
+:r ".\Objects\Tables\dimension.DATE_DIM.sql"
+:r ".\Objects\Tables\dimension.TEAM_DIM.sql"
+:r ".\Objects\Tables\dimension.PLAYER_DIM.sql"
+:r ".\Objects\Tables\fact.GAME_FACT.sql"
+:r ".\Objects\Tables\fact.PLAYER_GAME_STATS_FACT.sql"
+:r ".\Objects\Tables\staging.GAME_RAW.sql"
+:r ".\Objects\Tables\staging.PLAYER_RAW.sql"
+:r ".\Objects\Tables\staging.PLAYER_GAME_STATS_RAW.sql"
+:r ".\Objects\Tables\staging.TEAM_RAW.sql"
 
 -- Create stored procedures
-:r ".\Objects\Stored Procedures\Audit.usp_StartLoadBatch.sql"
-:r ".\Objects\Stored Procedures\Audit.usp_EndLoadBatch.sql"
-:r ".\Objects\Stored Procedures\Dimension.usp_LoadDimTeam.sql"
-:r ".\Objects\Stored Procedures\Dimension.usp_LoadDimPlayer.sql"
-:r ".\Objects\Stored Procedures\Dimension.usp_PopulateDateDimension.sql"
-:r ".\Objects\Stored Procedures\Fact.usp_LoadFactGame.sql"
-:r ".\Objects\Stored Procedures\Fact.usp_LoadFactPlayerGameStats.sql"
+:r ".\Objects\Stored Procedures\audit.P_START_LOAD_BATCH.sql"
+:r ".\Objects\Stored Procedures\audit.P_END_LOAD_BATCH.sql"
+:r ".\Objects\Stored Procedures\dimension.P_LOAD_DIM_TEAM.sql"
+:r ".\Objects\Stored Procedures\dimension.P_LOAD_DIM_PLAYER.sql"
+:r ".\Objects\Stored Procedures\dimension.P_POPULATE_DATE_DIMENSION.sql"
+:r ".\Objects\Stored Procedures\fact.P_LOAD_FACT_GAME.sql"
+:r ".\Objects\Stored Procedures\fact.P_LOAD_FACT_PLAYER_GAME_STATS.sql"
 
 -- Create reporting views
-:r ".\Objects\Views\Reporting.vwTeamGameResults.sql"
-:r ".\Objects\Views\Reporting.vwPlayerGameStats.sql"
-:r ".\Objects\Views\Reporting.vwTeamSeasonSummary.sql"
-:r ".\Objects\Views\Reporting.vwPlayerSeasonSummary.sql"
+:r ".\Objects\Views\reporting.vw_team_game_results.sql"
+:r ".\Objects\Views\reporting.vw_player_game_stats.sql"
+:r ".\Objects\Views\reporting.vw_team_season_summary.sql"
+:r ".\Objects\Views\reporting.vw_player_season_summary.sql"
 
 -- Optional sample data
--- :r ".\Objects\SampleData\001_InsertSampleData.sql"
+-- :r ".\004_LoadSampleData.sql"

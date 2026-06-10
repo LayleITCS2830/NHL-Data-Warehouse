@@ -1,7 +1,7 @@
 USE NHLDataWarehouse;
 GO
 
-CREATE OR ALTER VIEW Reporting.vwTeamGameResults
+CREATE OR ALTER VIEW reporting.vw_team_game_results
 AS
 SELECT
     g.GameID AS [Game ID],
@@ -19,11 +19,11 @@ SELECT
         WHEN g.AwayGoals > g.HomeGoals THEN away.TeamName
         ELSE 'Tie'
     END AS [Winning Team]
-FROM Fact.Game AS g
-INNER JOIN Dimension.[Date] AS d
+FROM fact.GAME_FACT AS g
+INNER JOIN dimension.DATE_DIM AS d
     ON d.DateKey = g.DateKey
-INNER JOIN Dimension.Team AS home
+INNER JOIN dimension.TEAM_DIM AS home
     ON home.TeamKey = g.HomeTeamKey
-INNER JOIN Dimension.Team AS away
+INNER JOIN dimension.TEAM_DIM AS away
     ON away.TeamKey = g.AwayTeamKey;
 GO

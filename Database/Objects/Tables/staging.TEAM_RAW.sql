@@ -1,0 +1,20 @@
+USE NHLDataWarehouse;
+GO
+
+IF OBJECT_ID('staging.TEAM_RAW', 'U') IS NULL
+BEGIN
+    CREATE TABLE staging.TEAM_RAW
+    (
+        RawID BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT TEAM_RAW_pk PRIMARY KEY,
+        SourceSystem VARCHAR(50) NOT NULL CONSTRAINT TEAM_RAW_SourceSystem_df DEFAULT ('NHL API'),
+        LoadBatchID UNIQUEIDENTIFIER NOT NULL,
+        RawJson NVARCHAR(MAX) NULL,
+        TeamID INT NULL,
+        TeamName VARCHAR(100) NULL,
+        TeamAbbreviation VARCHAR(10) NULL,
+        Conference VARCHAR(50) NULL,
+        Division VARCHAR(50) NULL,
+        CreatedDate DATETIME2 NOT NULL CONSTRAINT TEAM_RAW_CreatedDate_df DEFAULT (SYSUTCDATETIME())
+    );
+END
+GO

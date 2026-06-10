@@ -1,11 +1,11 @@
 USE NHLDataWarehouse;
 GO
 
-IF OBJECT_ID('Dimension.[Date]', 'U') IS NULL
+IF OBJECT_ID('dimension.DATE_DIM', 'U') IS NULL
 BEGIN
-    CREATE TABLE Dimension.[Date]
+    CREATE TABLE dimension.DATE_DIM
     (
-        DateKey INT NOT NULL CONSTRAINT PK_Dimension_Date PRIMARY KEY,
+        DateKey INT NOT NULL CONSTRAINT DATE_DIM_pk PRIMARY KEY,
         FullDate DATE NOT NULL,
         CalendarYear SMALLINT NOT NULL,
         CalendarQuarter TINYINT NOT NULL,
@@ -15,7 +15,7 @@ BEGIN
         DayOfWeek TINYINT NOT NULL,
         DayName VARCHAR(20) NOT NULL,
         IsWeekend BIT NOT NULL,
-        CONSTRAINT UQ_Dimension_Date_FullDate UNIQUE (FullDate)
+        CONSTRAINT DATE_DIM_FullDate_uq UNIQUE (FullDate)
     );
 END
 GO

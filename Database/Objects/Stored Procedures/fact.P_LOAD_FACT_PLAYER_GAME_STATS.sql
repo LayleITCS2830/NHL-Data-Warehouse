@@ -1,9 +1,22 @@
 USE NHLDataWarehouse;
 GO
 
-CREATE OR ALTER PROCEDURE Fact.usp_LoadFactPlayerGameStats
+CREATE OR ALTER PROCEDURE fact.P_LOAD_FACT_PLAYER_GAME_STATS
     @LoadBatchID UNIQUEIDENTIFIER
 AS
+/*****************************************************************************************
+PROC:	fact.P_LOAD_FACT_PLAYER_GAME_STATS
+AUTHOR:	Andrew Layle
+DATE:	06/09/2026
+
+DESCRIPTION:
+    Loads player game statistics from staging.PLAYER_GAME_STATS_RAW into
+    fact.PLAYER_GAME_STATS_FACT. Inserts new player/game combinations only.
+
+INPUT PARAMETERS:
+    @LoadBatchID UNIQUEIDENTIFIER - The load batch identifier used to filter source rows.
+
+*****************************************************************************************/
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
@@ -13,7 +26,7 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
 
-        INSERT INTO Fact.PlayerGameStats
+        INSERT INTO fact.PLAYER_GAME_STATS_FACT
             (GameKey, PlayerKey, TeamKey, Goals, Assists, Shots, Hits, Blocks, PenaltyMinutes, TimeOnIceSeconds)
         SELECT g.GameKey,
                p.PlayerKey,
@@ -25,32 +38,32 @@ BEGIN
                COALESCE(s.Blocks, 0),
                COALESCE(s.PenaltyMinutes, 0),
                s.TimeOnIceSeconds
-        FROM Staging.PlayerGameStatsRaw AS s
-        INNER JOIN Fact.Game AS g
+        FROM staging.PLAYER_GAME_STATS_RAW AS s
+        INNER JOIN fact.GAME_FACT AS g
             ON g.GameID = s.GameID
-        INNER JOIN Dimension.Player AS p
+        INNER JOIN dimension.PLAYER_DIM AS p
             ON p.PlayerID = s.PlayerID
-        INNER JOIN Dimension.Team AS t
+        INNER JOIN dimension.TEAM_DIM AS t
             ON t.TeamID = s.TeamID
         WHERE s.LoadBatchID = @LoadBatchID
           AND NOT EXISTS
           (
               SELECT 1
-              FROM Fact.PlayerGameStats AS tgt
+              FROM fact.PLAYER_GAME_STATS_FACT AS tgt
               WHERE tgt.GameKey = g.GameKey
                 AND tgt.PlayerKey = p.PlayerKey
           );
 
         SET @RowsInserted = @@ROWCOUNT;
 
-        EXEC Audit.usp_EndLoadBatch @LoadBatchID, 'Succeeded', @RowsInserted, 0, NULL;
+        EXEC audit.P_END_LOAD_BATCH @LoadBatchID, 'Succeeded', @RowsInserted, 0, NULL;
         COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
         DECLARE @ErrorMessage NVARCHAR(MAX) = ERROR_MESSAGE();
 
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        EXEC Audit.usp_EndLoadBatch @LoadBatchID, 'Failed', @RowsInserted, 0, @ErrorMessage;
+        EXEC audit.P_END_LOAD_BATCH @LoadBatchID, 'Failed', @RowsInserted, 0, @ErrorMessage;
         THROW;
     END CATCH
 END

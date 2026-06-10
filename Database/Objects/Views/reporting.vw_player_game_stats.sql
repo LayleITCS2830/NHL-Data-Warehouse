@@ -1,7 +1,7 @@
 USE NHLDataWarehouse;
 GO
 
-CREATE OR ALTER VIEW Reporting.vwPlayerGameStats
+CREATE OR ALTER VIEW reporting.vw_player_game_stats
 AS
 SELECT
     g.GameID AS [Game ID],
@@ -18,13 +18,13 @@ SELECT
     s.Blocks AS [Blocks],
     s.PenaltyMinutes AS [Penalty Minutes],
     s.TimeOnIceSeconds AS [Time On Ice Seconds]
-FROM Fact.PlayerGameStats AS s
-INNER JOIN Fact.Game AS g
+FROM fact.PLAYER_GAME_STATS_FACT AS s
+INNER JOIN fact.GAME_FACT AS g
     ON g.GameKey = s.GameKey
-INNER JOIN Dimension.[Date] AS d
+INNER JOIN dimension.DATE_DIM AS d
     ON d.DateKey = g.DateKey
-INNER JOIN Dimension.Player AS p
+INNER JOIN dimension.PLAYER_DIM AS p
     ON p.PlayerKey = s.PlayerKey
-INNER JOIN Dimension.Team AS t
+INNER JOIN dimension.TEAM_DIM AS t
     ON t.TeamKey = s.TeamKey;
 GO

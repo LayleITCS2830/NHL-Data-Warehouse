@@ -1,7 +1,7 @@
 USE NHLDataWarehouse;
 GO
 
-CREATE OR ALTER VIEW Reporting.vwTeamSeasonSummary
+CREATE OR ALTER VIEW reporting.vw_team_season_summary
 AS
 WITH TeamGames AS
 (
@@ -13,7 +13,7 @@ WITH TeamGames AS
            g.AwayShots AS ShotsAgainst,
            CASE WHEN g.HomeGoals > g.AwayGoals THEN 1 ELSE 0 END AS Wins,
            CASE WHEN g.HomeGoals < g.AwayGoals THEN 1 ELSE 0 END AS Losses
-    FROM Fact.Game AS g
+    FROM fact.GAME_FACT AS g
     UNION ALL
     SELECT g.Season,
            g.AwayTeamKey,
@@ -23,7 +23,7 @@ WITH TeamGames AS
            g.HomeShots,
            CASE WHEN g.AwayGoals > g.HomeGoals THEN 1 ELSE 0 END,
            CASE WHEN g.AwayGoals < g.HomeGoals THEN 1 ELSE 0 END
-    FROM Fact.Game AS g
+    FROM fact.GAME_FACT AS g
 )
 SELECT
     tg.Season AS [Season],
@@ -36,7 +36,7 @@ SELECT
     SUM(COALESCE(tg.ShotsFor, 0)) AS [Shots For],
     SUM(COALESCE(tg.ShotsAgainst, 0)) AS [Shots Against]
 FROM TeamGames AS tg
-INNER JOIN Dimension.Team AS t
+INNER JOIN dimension.TEAM_DIM AS t
     ON t.TeamKey = tg.TeamKey
 GROUP BY tg.Season, t.TeamName;
 GO

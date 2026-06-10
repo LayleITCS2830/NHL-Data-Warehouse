@@ -1,7 +1,7 @@
 USE NHLDataWarehouse;
 GO
 
-CREATE OR ALTER VIEW Reporting.vwPlayerSeasonSummary
+CREATE OR ALTER VIEW reporting.vw_player_season_summary
 AS
 SELECT
     g.Season AS [Season],
@@ -17,12 +17,12 @@ SELECT
     SUM(s.Blocks) AS [Blocks],
     SUM(s.PenaltyMinutes) AS [Penalty Minutes],
     SUM(COALESCE(s.TimeOnIceSeconds, 0)) AS [Time On Ice Seconds]
-FROM Fact.PlayerGameStats AS s
-INNER JOIN Fact.Game AS g
+FROM fact.PLAYER_GAME_STATS_FACT AS s
+INNER JOIN fact.GAME_FACT AS g
     ON g.GameKey = s.GameKey
-INNER JOIN Dimension.Player AS p
+INNER JOIN dimension.PLAYER_DIM AS p
     ON p.PlayerKey = s.PlayerKey
-INNER JOIN Dimension.Team AS t
+INNER JOIN dimension.TEAM_DIM AS t
     ON t.TeamKey = s.TeamKey
 GROUP BY g.Season, t.TeamName, p.FullName, p.PositionCode;
 GO

@@ -22,39 +22,62 @@ The purpose of this project is to demonstrate professional data warehouse design
 
 ```text
 NHLDataWarehouse/
-│
-├── Database/
-│   ├── 001_CreateDatabase.sql
-│   ├── 002_CreateSchemas.sql
-│   ├── 003_DeployDatabase.sql
-│   ├── Objects/
-│   │   ├── Tables/
-│   │   ├── Views/
-│   │   ├── Functions/
-│   │   └── Stored Procedures/
-│   │
-│   ├── Security/
-│   ├── PreDeploymentScripts/
-│   ├── PostDeploymentScripts/
-│   ├── SampleData/
-│   └── Model/
-│
-├── ETL/
-│   ├── Python/
-│   └── SSIS/
-│
-├── DatabaseUnitTests/
-│
-├── Documentation/
-│   ├── ERD/
-│   ├── Architecture/
-│   └── Screenshots/
-│
-├── README.md
-└── AGENTS.md
+|
+|-- Database/
+|   |-- 001_CreateDatabase.sql
+|   |-- 002_CreateSchemas.sql
+|   |-- 003_DeployDatabase.sql
+|   |-- Objects/
+|   |   |-- Tables/
+|   |   |-- Views/
+|   |   |-- Functions/
+|   |   `-- Stored Procedures/
+|   |
+|   |-- Security/
+|   |-- PreDeploymentScripts/
+|   |-- PostDeploymentScripts/
+|   |-- SampleData/
+|   `-- Model/
+|
+|-- ETL/
+|   |-- Python/
+|   `-- SSIS/
+|
+|-- DatabaseUnitTests/
+|
+|-- Documentation/
+|   |-- ERD/
+|   |-- Architecture/
+|   `-- Screenshots/
+|
+|-- README.md
+`-- AGENTS.md
 ```
 
 ---
+## Database Naming Conventions
+
+### Stored Procedures
+* Follow pattern `[schema].P_[OPERATION]__[OBJECT]`:
+* `P_INTF__` - Interface/UI queries (data retrieval for screens)
+* `P_ETL__` - ETL operations
+* `P_EML__` - Email generation
+* `P_LOG__` - Logging operations
+* `P_SEC__` - Security operations
+* `P_REP__` - Reports
+
+### Functions
+* Functions use `F_...`.
+
+### Views
+* Views use `V_APP__...`, `V_ETL__...`, or similar prefixes.
+
+### Constraints
+* Primary key constraints use `[TABLE_NAME]_pk`.
+* Foreign key constraints use `[PARENT_TABLE]_[CHILD_TABLE]_fk`, with numeric suffixes when needed.
+* Unique constraints use `[TABLE_NAME]_[COLUMN_NAME]_uq`.
+* Check constraints use `[TABLE_NAME]_[CONSTRAINT_NAME]_ck`.
+* Nonclustered indexes use `IX_[TABLE]__[COLUMN_OR_PURPOSE]`.
 
 ## Architecture
 
@@ -70,11 +93,14 @@ NHLDataWarehouse/
 
 ```text
 NHL API
-    ↓
+    |
+    v
 Staging
-    ↓
+    |
+    v
 Dimension / Fact
-    ↓
+    |
+    v
 Reporting Views
 ```
 
@@ -94,41 +120,71 @@ Reporting Views
 
 ---
 
-## Naming Standards
-
 ### Tables
 
+**Naming Pattern:** `[schema].[TABLE_DIM]` or `[schema].[TABLE_FACT]`
+
 ```sql
-Dimension.Team
-Dimension.Player
-Fact.Game
-Fact.PlayerGameStats
-Staging.TeamRaw
+dimension.TEAM_DIM
+dimension.PLAYER_DIM
+fact.GAME_FACT
+fact.PLAYER_GAME_STATS_FACT
+staging.TEAM_RAW
+audit.LOAD_BATCH
+dimension.DATE_DIM
 ```
 
 ### Views
 
+**Naming Pattern:** `[schema].vw_[view_name]`
+
 ```sql
-Reporting.vwTeamSeasonSummary
-Reporting.vwPlayerGameStats
+reporting.vw_team_season_summary
+reporting.vw_player_game_stats
+reporting.vw_team_game_results
+reporting.vw_player_season_summary
 ```
 
 ### Stored Procedures
 
+**Naming Pattern:** `[schema].P_[OPERATION]__[OBJECT]`
+
 ```sql
-Dimension.usp_LoadDimTeam
-Dimension.usp_LoadDimPlayer
-Fact.usp_LoadFactGame
-Fact.usp_LoadFactPlayerGameStats
+dimension.P_LOAD_DIM_TEAM
+dimension.P_LOAD_DIM_PLAYER
+dimension.P_POPULATE_DATE_DIMENSION
+fact.P_LOAD_FACT_GAME
+fact.P_LOAD_FACT_PLAYER_GAME_STATS
+audit.P_START_LOAD_BATCH
+audit.P_END_LOAD_BATCH
+```
+
+### Functions
+
+**Naming Pattern:** `[schema].F_[FUNCTION_NAME]`
+
+```sql
+dimension.F_GET_DATE_KEY
 ```
 
 ### Constraints
 
-```text
-PK_TableName
-FK_Child_Parent
-UQ_Table_Column
+* Primary key constraints: `[TABLE_NAME]_pk`
+* Foreign key constraints: `[PARENT_TABLE]_[CHILD_TABLE]_fk` (with numeric suffix if multiple)
+* Unique constraints: `[TABLE_NAME]_[COLUMN_NAME]_uq`
+* Check constraints: `[TABLE_NAME]_[CONSTRAINT_NAME]_ck`
+
+### Indexes
+
+* Clustered index: `CX_[TABLE_NAME]__[COLUMN_NAME]`
+* Nonclustered index: `IX_[TABLE_NAME]__[COLUMN_NAME]` or `IX_[TABLE_NAME]__[PURPOSE]`
+
+```sql
+IX_GAME_FACT__GAME_ID
+IX_PLAYER_DIM__PLAYER_ID
 ```
+
+
 
 ---
 
@@ -145,6 +201,224 @@ UQ_Table_Column
 
 ---
 
+## Code Templates
+
+### Stored Procedure Template
+
+Use this template as a starting point when creating new stored procedures:
+
+```sql
+CREATE OR ALTER PROCEDURE [schema_name].[P_OPERATION_NAME]
+    @Parameter1Name DATATYPE,
+    @Parameter2Name DATATYPE = DEFAULT_VALUE,
+    @OutputParameter DATATYPE OUTPUT
+AS
+/*****************************************************************************************
+PROC:	[schema_name].[P_OPERATION_NAME]
+AUTHOR:	YOUR_NAME
+DATE:	MM/DD/YYYY
+
+DESCRIPTION:
+    A brief, clear description of what this procedure does. Explain the business purpose
+    and the key operations performed (e.g., inserts, updates, deletes, joins).
+
+NOTES: 
+    Any important assumptions, prerequisites, or side effects. For example:
+    - What source or staging tables must be populated first?
+    - Are there dependencies on other procedures?
+    - Are there any special configurations or settings required?
+
+INPUT PARAMETERS:
+    @Parameter1Name DATATYPE - Description of what this parameter represents and 
+                                how it is used in the procedure.
+    @Parameter2Name DATATYPE - Description. Default value: [specify default]
+
+OUTPUT PARAMETERS:
+    @OutputParameter DATATYPE - Description of the value(s) returned to the caller.
+
+SAMPLE CALL:
+    DECLARE @OutputParam DATATYPE;
+    EXEC [schema_name].[P_OPERATION_NAME]
+        @Parameter1Name = 'value1', 
+        @Parameter2Name = 'value2',
+        @OutputParameter = @OutputParam OUTPUT;
+    SELECT @OutputParam AS Result;
+
+CHANGE HISTORY:
+    MM/DD/YYYY - AUTHOR - Initial creation
+    MM/DD/YYYY - AUTHOR - Description of change
+
+*****************************************************************************************/
+DECLARE @RowsInserted INT = 0,
+        @RowsUpdated INT = 0,
+        @RowsDeleted INT = 0;
+
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    -- ========================================================================
+    -- Your procedure logic goes here
+    -- ========================================================================
+
+    -- If this is an ETL procedure, call the audit procedures at the end:
+    -- EXEC audit.P_END_LOAD_BATCH @LoadBatchId, 'Succeeded', @RowsInserted, @RowsUpdated, NULL;
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(MAX) = ERROR_MESSAGE();
+
+    -- Rollback transaction if it's still active
+    IF @@TRANCOUNT > 0
+        ROLLBACK TRANSACTION;
+
+    -- If this is an ETL procedure, log the error:
+    -- EXEC audit.P_END_LOAD_BATCH @LoadBatchId, 'Failed', @RowsInserted, @RowsUpdated, @ErrorMessage;
+
+    -- Re-throw the error for the caller to handle
+    THROW;
+END CATCH
+
+GO
+```
+
+**Template Guidelines:**
+* Replace placeholders with actual values (keep [schema_name] lowercase, [P_OPERATION_NAME] uppercase)
+* The header block documents purpose, parameters, and usage
+* Always include CHANGE HISTORY for tracking modifications
+* Use TRY/CATCH for error handling and transaction management
+* For ETL procedures, integrate with audit.P_START_LOAD_BATCH and audit.P_END_LOAD_BATCH
+* Use camelCase for parameter names (@Parameter1Name, @LoadBatchId) and variable names (@RowsInserted)
+* Declare row count variables for logging and auditing
+
+### ETL Stored Procedure Template
+
+Use this template for ETL procedures that perform dimension/fact loading with upsert operations:
+
+```sql
+CREATE OR ALTER PROCEDURE [schema_name].[P_LOAD_OBJECT]
+    @LoadBatchId UNIQUEIDENTIFIER
+AS
+/*****************************************************************************************
+PROC:	[schema_name].[P_LOAD_OBJECT]
+AUTHOR:	YOUR_NAME
+DATE:	MM/DD/YYYY
+
+DESCRIPTION:
+    A brief, clear description of the ETL operation. Explain what source table is being
+    loaded from, what target table is being loaded to, and what type of operation is
+    performed (insert, update, upsert, etc.).
+
+NOTES: 
+    This procedure assumes that all source staging tables have been populated with the
+    latest data for the given @LoadBatchId. Include any dependencies on other procedures
+    or tables that must be loaded first (e.g., "dimension.TEAM_DIM must be loaded before
+    this procedure is called").
+
+INPUT PARAMETERS:
+    @LoadBatchId UNIQUEIDENTIFIER - The identifier for the current load batch, used to
+                                    filter source data and for auditing purposes.
+
+SAMPLE CALL:
+    DECLARE @LoadBatchId UNIQUEIDENTIFIER = 'YOUR-BATCH-ID';
+    EXEC [schema_name].[P_LOAD_OBJECT] @LoadBatchId;
+
+CHANGE HISTORY:
+    MM/DD/YYYY - AUTHOR - Initial creation
+    MM/DD/YYYY - AUTHOR - Description of change
+
+*****************************************************************************************/
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+
+DECLARE @RowsInserted INT = 0,
+        @RowsUpdated INT = 0;
+
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    -- ========================================================================
+    -- UPDATE: Existing records
+    -- ========================================================================
+    WITH source_rows AS
+    (
+        SELECT  src.natural_key,
+                src.attribute_1,
+                src.attribute_2
+        FROM    staging.SOURCE_TABLE    src
+        WHERE   src.load_batch_id = @LoadBatchId
+        AND     src.natural_key IS NOT NULL
+    )
+    UPDATE tgt
+    SET attribute_1 = src.attribute_1,
+        attribute_2 = src.attribute_2,
+        is_active = 1,
+        modified_date = SYSUTCDATETIME()
+    FROM    dimension.TARGET_DIM  tgt
+    JOIN    source_rows           src ON  src.natural_key = tgt.natural_key
+    WHERE   ( ISNULL(tgt.attribute_1, '') <> ISNULL(src.attribute_1, '')
+            OR  ISNULL(tgt.attribute_2, '') <> ISNULL(src.attribute_2, '')
+            OR  tgt.is_active <> 1
+            )
+
+    SET @RowsUpdated = @@ROWCOUNT;
+
+    -- ========================================================================
+    -- INSERT: New records
+    -- ========================================================================
+    WITH source_rows AS
+    (
+        SELECT  src.natural_key,
+                src.attribute_1,
+                src.attribute_2
+        FROM    staging.SOURCE_TABLE    src
+        WHERE   src.load_batch_id = @LoadBatchId
+        AND     src.natural_key IS NOT NULL
+    )
+    INSERT INTO dimension.TARGET_DIM
+            (natural_key, attribute_1, attribute_2)
+    SELECT  src.natural_key, src.attribute_1, src.attribute_2
+    FROM    source_rows AS src
+    WHERE NOT EXISTS  (
+                        SELECT 1
+                        FROM dimension.TARGET_DIM AS tgt
+                        WHERE tgt.natural_key = src.natural_key
+                    );
+
+    SET @RowsInserted = @@ROWCOUNT;
+
+    -- Log success and commit
+    EXEC audit.P_END_LOAD_BATCH @LoadBatchId, 'Succeeded', @RowsInserted, @RowsUpdated, NULL;
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(MAX) = ERROR_MESSAGE();
+
+    -- Rollback and log failure
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+    EXEC audit.P_END_LOAD_BATCH @LoadBatchId, 'Failed', @RowsInserted, @RowsUpdated, @ErrorMessage;
+    THROW;
+END CATCH
+
+GO
+```
+
+**ETL Template Guidelines:**
+* Use CTEs (WITH statements) to define source rows with filtering logic
+* Separate UPDATE and INSERT operations into distinct sections
+* Update both data attributes AND metadata columns (is_active, modified_date)
+* Include change detection logic in WHERE clause to avoid unnecessary updates
+* Use NOT EXISTS to prevent duplicate inserts
+* Always call audit.P_END_LOAD_BATCH with appropriate status and row counts
+* Use camelCase for parameter names (@LoadBatchId) and variable names (@RowsInserted, @RowsUpdated)
+* Indent SQL keywords and table aliases for readability (FROM, WHERE, JOIN on separate lines)
+* Rollback transaction and log errors in CATCH block
+
+---
+
 ## Indexing Standards
 
 * Every table must have a named primary key.
@@ -152,6 +426,7 @@ UQ_Table_Column
 * Create indexes only when there is a clear query or join benefit.
 * Choose clustered indexes intentionally.
 * Document non-obvious indexes with comments.
+* Use consistent naming for indexes with `CX_` and `IX_` prefixes.
 
 ---
 
@@ -161,7 +436,7 @@ All ETL procedures must:
 
 * Support reruns.
 * Prevent duplicate records.
-* Log execution activity to Audit.LoadBatch.
+* Log execution activity to audit.LOAD_BATCH.
 * Use TRY/CATCH error handling.
 * Use transactions where appropriate.
 * Validate source data before loading warehouse tables.

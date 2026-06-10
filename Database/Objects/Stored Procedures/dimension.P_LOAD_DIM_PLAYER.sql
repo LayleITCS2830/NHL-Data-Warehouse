@@ -1,14 +1,28 @@
 USE NHLDataWarehouse;
 GO
 
-CREATE OR ALTER PROCEDURE Dimension.usp_LoadDimPlayer
+CREATE OR ALTER PROCEDURE dimension.P_LOAD_DIM_PLAYER
     @LoadBatchID UNIQUEIDENTIFIER
 AS
+/*****************************************************************************************
+PROC:	dimension.P_LOAD_DIM_PLAYER
+AUTHOR:	Andrew Layle
+DATE:	06/10/2026
+
+DESCRIPTION:
+    Loads player records from staging.PLAYER_RAW into dimension.PLAYER_DIM. Updates
+    changed players and inserts new players while preserving the source PlayerID natural key.
+
+INPUT PARAMETERS:
+    @LoadBatchID UNIQUEIDENTIFIER - The load batch identifier used to filter source rows.
+
+*****************************************************************************************/
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    DECLARE @RowsInserted INT = 0, @RowsUpdated INT = 0;
+    DECLARE @RowsInserted INT = 0,
+            @RowsUpdated INT = 0;
 
     BEGIN TRY
         BEGIN TRANSACTION;
@@ -23,8 +37,8 @@ BEGIN
                    p.PositionCode,
                    p.ShootsCatches,
                    p.BirthDate
-            FROM Staging.PlayerRaw AS p
-            LEFT JOIN Dimension.Team AS t
+            FROM staging.PLAYER_RAW AS p
+            LEFT JOIN dimension.TEAM_DIM AS t
                 ON t.TeamID = p.TeamID
             WHERE p.LoadBatchID = @LoadBatchID
               AND p.PlayerID IS NOT NULL
@@ -39,7 +53,7 @@ BEGIN
             BirthDate = src.BirthDate,
             IsActive = 1,
             ModifiedDate = SYSUTCDATETIME()
-        FROM Dimension.Player AS tgt
+        FROM dimension.PLAYER_DIM AS tgt
         INNER JOIN SourceRows AS src
             ON src.PlayerID = tgt.PlayerID
         WHERE src.FullName IS NOT NULL
@@ -66,35 +80,41 @@ BEGIN
                    p.PositionCode,
                    p.ShootsCatches,
                    p.BirthDate
-            FROM Staging.PlayerRaw AS p
-            LEFT JOIN Dimension.Team AS t
+            FROM staging.PLAYER_RAW AS p
+            LEFT JOIN dimension.TEAM_DIM AS t
                 ON t.TeamID = p.TeamID
             WHERE p.LoadBatchID = @LoadBatchID
               AND p.PlayerID IS NOT NULL
         )
-        INSERT INTO Dimension.Player
+        INSERT INTO dimension.PLAYER_DIM
             (PlayerID, TeamKey, FirstName, LastName, FullName, PositionCode, ShootsCatches, BirthDate)
-        SELECT src.PlayerID, src.TeamKey, src.FirstName, src.LastName, src.FullName,
-               src.PositionCode, src.ShootsCatches, src.BirthDate
+        SELECT src.PlayerID,
+               src.TeamKey,
+               src.FirstName,
+               src.LastName,
+               src.FullName,
+               src.PositionCode,
+               src.ShootsCatches,
+               src.BirthDate
         FROM SourceRows AS src
         WHERE src.FullName IS NOT NULL
           AND NOT EXISTS
           (
               SELECT 1
-              FROM Dimension.Player AS tgt
+              FROM dimension.PLAYER_DIM AS tgt
               WHERE tgt.PlayerID = src.PlayerID
           );
 
         SET @RowsInserted = @@ROWCOUNT;
 
-        EXEC Audit.usp_EndLoadBatch @LoadBatchID, 'Succeeded', @RowsInserted, @RowsUpdated, NULL;
+        EXEC audit.P_END_LOAD_BATCH @LoadBatchID, 'Succeeded', @RowsInserted, @RowsUpdated, NULL;
         COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
         DECLARE @ErrorMessage NVARCHAR(MAX) = ERROR_MESSAGE();
 
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        EXEC Audit.usp_EndLoadBatch @LoadBatchID, 'Failed', @RowsInserted, @RowsUpdated, @ErrorMessage;
+        EXEC audit.P_END_LOAD_BATCH @LoadBatchID, 'Failed', @RowsInserted, @RowsUpdated, @ErrorMessage;
         THROW;
     END CATCH
 END

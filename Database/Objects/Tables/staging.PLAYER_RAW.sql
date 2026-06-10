@@ -1,12 +1,12 @@
 USE NHLDataWarehouse;
 GO
 
-IF OBJECT_ID('Staging.PlayerRaw', 'U') IS NULL
+IF OBJECT_ID('staging.PLAYER_RAW', 'U') IS NULL
 BEGIN
-    CREATE TABLE Staging.PlayerRaw
+    CREATE TABLE staging.PLAYER_RAW
     (
-        RawID BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Staging_PlayerRaw PRIMARY KEY,
-        SourceSystem VARCHAR(50) NOT NULL CONSTRAINT DF_Staging_PlayerRaw_SourceSystem DEFAULT ('NHL API'),
+        RawID BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PLAYER_RAW_pk PRIMARY KEY,
+        SourceSystem VARCHAR(50) NOT NULL CONSTRAINT PLAYER_RAW_SourceSystem_df DEFAULT ('NHL API'),
         LoadBatchID UNIQUEIDENTIFIER NOT NULL,
         RawJson NVARCHAR(MAX) NULL,
         PlayerID INT NULL,
@@ -17,7 +17,7 @@ BEGIN
         PositionCode VARCHAR(10) NULL,
         ShootsCatches VARCHAR(10) NULL,
         BirthDate DATE NULL,
-        CreatedDate DATETIME2 NOT NULL CONSTRAINT DF_Staging_PlayerRaw_CreatedDate DEFAULT (SYSUTCDATETIME())
+        CreatedDate DATETIME2 NOT NULL CONSTRAINT PLAYER_RAW_CreatedDate_df DEFAULT (SYSUTCDATETIME())
     );
 END
 GO
