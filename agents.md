@@ -22,43 +22,43 @@ The purpose of this project is to demonstrate professional data warehouse design
 
 ```text
 NHLDataWarehouse/
-|
-|-- Database/
-|   |-- 001_CreateDatabase.sql
-|   |-- 002_CreateSchemas.sql
-|   |-- 003_DeployDatabase.sql
-|   |-- Objects/
-|   |   |-- Tables/
-|   |   |-- Views/
-|   |   |-- Functions/
-|   |   `-- Stored Procedures/
-|   |
-|   |-- Security/
-|   |-- PreDeploymentScripts/
-|   |-- PostDeploymentScripts/
-|   |-- SampleData/
-|   `-- Model/
-|
-|-- ETL/
-|   |-- Python/
-|   `-- SSIS/
-|
-|-- DatabaseUnitTests/
-|
-|-- Documentation/
-|   |-- ERD/
-|   |-- Architecture/
-|   `-- Screenshots/
-|
-|-- README.md
-`-- AGENTS.md
+│
+├── Database/
+│   ├── 001_CreateDatabase.sql
+│   ├── 002_CreateSchemas.sql
+│   ├── 003_DeployDatabase.sql
+│   ├── Objects/
+│   │   ├── Tables/
+│   │   ├── Views/
+│   │   ├── Functions/
+│   │   └── Stored Procedures/
+│   │
+│   ├── Security/
+│   ├── PreDeploymentScripts/
+│   ├── PostDeploymentScripts/
+│   ├── SampleData/
+│   └── Model/
+│
+├── ETL/
+│   ├── Python/
+│   └── SSIS/
+│
+├── DatabaseUnitTests/
+│
+├── Documentation/
+│   ├── ERD/
+│   ├── Architecture/
+│   └── Screenshots/
+│
+├── README.md
+└── AGENTS.md
 ```
 
 ---
 ## Database Naming Conventions
 
 ### Stored Procedures
-* Follow pattern `[schema].P_[OPERATION]__[OBJECT]`:
+* follow pattern `schema.[P_TYPE]__[PROCEDURE_NAME]`:
 * `P_INTF__` - Interface/UI queries (data retrieval for screens)
 * `P_ETL__` - ETL operations
 * `P_EML__` - Email generation
@@ -66,17 +66,15 @@ NHLDataWarehouse/
 * `P_SEC__` - Security operations
 * `P_REP__` - Reports
 
-### Functions
+### Fuctions
 * Functions use `F_...`.
 
 ### Views
 * Views use `V_APP__...`, `V_ETL__...`, or similar prefixes.
 
 ### Constraints
-* Primary key constraints use `[TABLE_NAME]_pk`.
-* Foreign key constraints use `[PARENT_TABLE]_[CHILD_TABLE]_fk`, with numeric suffixes when needed.
-* Unique constraints use `[TABLE_NAME]_[COLUMN_NAME]_uq`.
-* Check constraints use `[TABLE_NAME]_[CONSTRAINT_NAME]_ck`.
+* Primary key constraints use `[TABLE]_pk`.
+* Foreign key constraints commonly use `[REFERENCED_TABLE]_[LOCAL_TABLE]_fk`, with numeric suffixes when needed.
 * Nonclustered indexes use `IX_[TABLE]__[COLUMN_OR_PURPOSE]`.
 
 ## Architecture
@@ -93,14 +91,11 @@ NHLDataWarehouse/
 
 ```text
 NHL API
-    |
-    v
+    ↓
 Staging
-    |
-    v
+    ↓
 Dimension / Fact
-    |
-    v
+    ↓
 Reporting Views
 ```
 
@@ -136,13 +131,13 @@ dimension.DATE_DIM
 
 ### Views
 
-**Naming Pattern:** `[schema].vw_[view_name]`
+**Naming Pattern:** `[schema].V_[VIEW_NAME]`
 
 ```sql
-reporting.vw_team_season_summary
-reporting.vw_player_game_stats
-reporting.vw_team_game_results
-reporting.vw_player_season_summary
+reporting.V_TEAM_SEASON_SUMMARY
+reporting.V_PLAYER_GAME_STATS
+reporting.V_TEAM_GAME_RESULTS
+reporting.V_PLAYER_SEASON_SUMMARY
 ```
 
 ### Stored Procedures
@@ -426,7 +421,7 @@ GO
 * Create indexes only when there is a clear query or join benefit.
 * Choose clustered indexes intentionally.
 * Document non-obvious indexes with comments.
-* Use consistent naming for indexes with `CX_` and `IX_` prefixes.
+* Use consistent naming: `PK_`, `CX_`, `IX_`, `FK_`, `UQ_`, `CK_` prefixes
 
 ---
 
