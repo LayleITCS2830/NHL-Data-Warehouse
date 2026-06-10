@@ -54,7 +54,7 @@ BEGIN CATCH
 
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION
     EXEC audit.P_END_LOAD_BATCH @load_batch_id, 'Failed', @rows_inserted, 0, @error_message
-    THROW
+    ;THROW
 END CATCH
 
 GO

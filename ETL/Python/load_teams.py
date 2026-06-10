@@ -14,6 +14,7 @@ import sys
 from typing import Any
 
 import pyodbc
+print(pyodbc.drivers()) # "remove once testing confirms pyodbc supports Python 3.13"
 import requests
 
 
@@ -28,7 +29,7 @@ def build_connection_string() -> str:
 
     server = os.getenv("NHL_DW_SQL_SERVER", "localhost")
     database = os.getenv("NHL_DW_DATABASE", "NHLDataWarehouse")
-    driver = os.getenv("NHL_DW_ODBC_DRIVER", "ODBC Driver 18 for SQL Server")
+    driver = os.getenv("NHL_DW_ODBC_DRIVER", "ODBC Driver 17 for SQL Server")
     trusted_connection = os.getenv("NHL_DW_TRUSTED_CONNECTION", "yes")
     trust_server_certificate = os.getenv("NHL_DW_TRUST_SERVER_CERTIFICATE", "yes")
 
