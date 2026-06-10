@@ -115,6 +115,36 @@ The Python process should:
 * Record failures by ending the audit batch with a `Failed` status when an error occurs
   before `dimension.P_LOAD_DIM_TEAM` handles audit logging.
 
+## Running the Team ETL
+
+Install dependencies:
+
+```powershell
+cd ETL\Python
+python -m pip install -r requirements.txt
+```
+
+Set connection values using environment variables, or provide a complete
+`NHL_DW_CONNECTION_STRING`.
+
+```powershell
+$env:NHL_DW_SQL_SERVER = "localhost"
+$env:NHL_DW_DATABASE = "NHLDataWarehouse"
+$env:NHL_DW_ODBC_DRIVER = "ODBC Driver 18 for SQL Server"
+$env:NHL_DW_TRUSTED_CONNECTION = "yes"
+$env:NHL_DW_TRUST_SERVER_CERTIFICATE = "yes"
+```
+
+Run the load:
+
+```powershell
+python load_teams.py
+```
+
+Successful output includes the load batch identifier, parsed API team count, staging
+insert count, dimension row counts before and after the load, and the number of duplicate
+team check rows. `Duplicate team check rows` should be `0`.
+
 ## Planned File Layout
 
 ```text
