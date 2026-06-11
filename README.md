@@ -73,7 +73,7 @@ NHLDataWarehouse/
 |   `-- SSIS/
 |-- DatabaseUnitTests/
 |-- Documentation/
-|-- agents.md
+|-- AGENTS.md
 `-- README.md
 ```
 
@@ -159,7 +159,7 @@ Common filters are documented in [ETL/README.md](ETL/README.md), including team 
 - Use `TRY/CATCH`, transactions, and audit logging for warehouse loads.
 - Keep deployment scripts ordered by dependency.
 
-Detailed database standards are maintained in [Database/README.md](Database/README.md) and [agents.md](agents.md).
+Detailed database standards are maintained in [Database/README.md](Database/README.md) and [AGENTS.md](AGENTS.md).
 
 ## Current Capabilities
 
