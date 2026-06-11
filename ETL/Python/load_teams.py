@@ -28,6 +28,7 @@ from nhl_dw_etl import (
 
 
 def fetch_teams(endpoint: str) -> list[dict[str, Any]]:
+    # Pull the team reference payload and validate the expected list container.
     payload = fetch_json(endpoint)
     teams = payload.get("data")
     if not isinstance(teams, list):
@@ -37,12 +38,14 @@ def fetch_teams(endpoint: str) -> list[dict[str, Any]]:
 
 
 def parse_team(raw_team: dict[str, Any]) -> dict[str, Any]:
+    # Extract the natural key and required display name from the API record.
     team_id = raw_team.get("id")
     team_name = raw_team.get("fullName")
 
     if team_id is None or team_name is None:
         raise ValueError(f"Team record is missing id or fullName: {raw_team}")
 
+    # Preserve the original source JSON alongside the typed staging columns.
     return {
         "raw_json": json.dumps(raw_team, ensure_ascii=False, sort_keys=True),
         "team_id": int(team_id),
@@ -56,6 +59,7 @@ def parse_team(raw_team: dict[str, Any]) -> dict[str, Any]:
 def insert_staging_rows(
     cursor: pyodbc.Cursor, load_batch_id: str, teams: list[dict[str, Any]]
 ) -> int:
+    # Stage parsed team rows with the current audit batch id.
     insert_sql = """
         INSERT INTO staging.team_raw
                 (source_system,
@@ -86,16 +90,19 @@ def insert_staging_rows(
     if not rows:
         return 0
 
+    # Bulk insert is faster for full team reference refreshes.
     cursor.fast_executemany = True
     cursor.executemany(insert_sql, rows)
     return len(rows)
 
 
 def execute_dimension_load(cursor: pyodbc.Cursor, load_batch_id: str) -> None:
+    # Move the staged team records into dimension.team_dim.
     cursor.execute("EXEC dimension.P_LOAD_DIM_TEAM @load_batch_id = ?;", load_batch_id)
 
 
 def get_duplicate_teams(cursor: pyodbc.Cursor) -> list[tuple[int, int]]:
+    # Return any duplicate source team keys created by the load.
     cursor.execute(
         """
         SELECT  team_id,
@@ -109,6 +116,7 @@ def get_duplicate_teams(cursor: pyodbc.Cursor) -> list[tuple[int, int]]:
 
 
 def run(endpoint: str) -> int:
+    # Fetch and normalize API records before opening the warehouse transaction.
     raw_teams = fetch_teams(endpoint)
     parsed_teams = [parse_team(team) for team in raw_teams]
 
@@ -117,15 +125,19 @@ def run(endpoint: str) -> int:
 
     try:
         cursor = connection.cursor()
+
+        # Start audit tracking, refresh team staging, and commit staged rows.
         team_count_before = count_rows(cursor, "dimension.team_dim")
         load_batch_id = start_load_batch(cursor)
         truncate_staging_table(cursor, "staging.team_raw")
         insert_count = insert_staging_rows(cursor, load_batch_id, parsed_teams)
         connection.commit()
 
+        # Execute the warehouse upsert procedure for the staged batch.
         execute_dimension_load(cursor, load_batch_id)
         connection.commit()
 
+        # Collect row-count and duplicate-key validation results.
         team_count_after = count_rows(cursor, "dimension.team_dim")
         duplicate_teams = get_duplicate_teams(cursor)
 
@@ -137,12 +149,14 @@ def run(endpoint: str) -> int:
         print(f"Duplicate team check rows: {len(duplicate_teams)}")
 
         if duplicate_teams:
+            # A nonzero return code lets schedulers fail the job on validation errors.
             for team_id, team_count in duplicate_teams:
                 print(f"Duplicate team_id {team_id}: {team_count} rows")
             return 1
 
         return 0
     except Exception as exc:
+        # Roll back open work and mark the audit batch failed when possible.
         connection.rollback()
         if load_batch_id is not None:
             mark_batch_failed(connection.cursor(), load_batch_id, str(exc))
@@ -153,6 +167,7 @@ def run(endpoint: str) -> int:
 
 
 def parse_args() -> argparse.Namespace:
+    # Allow endpoint overrides for local testing or API version changes.
     parser = argparse.ArgumentParser(description="Load NHL teams into the warehouse.")
     parser.add_argument(
         "--endpoint",
@@ -163,6 +178,7 @@ def parse_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
+    # CLI entry point: convert exceptions into a process failure code.
     args = parse_args()
     try:
         sys.exit(run(args.endpoint))

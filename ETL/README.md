@@ -1,123 +1,41 @@
 # NHL Data Warehouse ETL
 
-This folder contains Python ETL processes that load NHL API data into the SQL Server
-data warehouse.
+This folder contains Python ETL processes that load NHL API data into the SQL
+Server data warehouse.
 
-## Team Dimension ETL
+The Python ETL follows this flow:
 
-The first Python ETL process loads NHL team records from the NHL API into the team
-dimension.
-
-Expected flow:
-
-1. Start a load batch with `audit.P_START_LOAD_BATCH`.
-2. Call the NHL teams endpoint.
-3. Parse team records from the API response.
-4. Insert parsed team records into `staging.TEAM_RAW`.
-5. Execute `dimension.P_LOAD_DIM_TEAM`.
-6. Prove no duplicate teams were created in `dimension.TEAM_DIM`.
-
-Note: team data belongs in `staging.TEAM_RAW`. `dimension.P_LOAD_DIM_TEAM` reads from
-`staging.TEAM_RAW`, so the teams ETL should not insert these rows into
-`staging.PLAYER_RAW`.
-
-## Database Contract
-
-### Staging Target
-
-`staging.TEAM_RAW`
-
-Columns populated by the Python ETL:
-
-```sql
-SOURCE_SYSTEM,
-LOAD_BATCH_ID,
-RAW_JSON,
-TEAM_ID,
-TEAM_NAME,
-TEAM_ABBREVIATION,
-CONFERENCE,
-DIVISION
+```text
+NHL API
+    -> staging tables
+    -> dimension and fact stored procedures
+    -> validation checks
 ```
 
-`RAW_ID` and `CREATED_DATE` are populated by table defaults.
+## Folder Layout
 
-### Audit Start
-
-```sql
-DECLARE @load_batch_id UNIQUEIDENTIFIER;
-
-EXEC audit.P_START_LOAD_BATCH
-    @source_system = 'NHL API',
-    @load_batch_id = @load_batch_id OUTPUT;
+```text
+ETL/
+|-- README.md
+|-- Python/
+|   |-- .env
+|   |-- config.example.env
+|   |-- load_games.py
+|   |-- load_players.py
+|   |-- load_player_game_stats.py
+|   |-- load_teams.py
+|   |-- nhl_dw_etl.py
+|   |-- requirements.txt
+|   |-- run_all_etl.py
+|   `-- run_load_procedures.py
+`-- SSIS/
 ```
 
-The returned `@load_batch_id` must be used for every staging row inserted during the
-same ETL run.
+`__pycache__` may be created locally when Python scripts are compiled or run.
 
-### Dimension Load
+## Setup
 
-```sql
-EXEC dimension.P_LOAD_DIM_TEAM
-    @load_batch_id = @load_batch_id;
-```
-
-`dimension.P_LOAD_DIM_TEAM` updates changed teams and inserts new teams by matching on
-the NHL source natural key, `team_id`.
-
-## Duplicate Proof
-
-`dimension.TEAM_DIM` includes a unique constraint on the NHL source team identifier:
-
-```sql
-CONSTRAINT TEAM_DIM_TEAM_ID_uq UNIQUE (TEAM_ID)
-```
-
-After each ETL run, this query should return zero rows:
-
-```sql
-SELECT  team_id,
-        COUNT(*) AS team_count
-FROM    dimension.team_dim
-GROUP BY team_id
-HAVING  COUNT(*) > 1;
-```
-
-The ETL should also be rerunnable. Running the same team load twice should not increase
-the count of records in `dimension.TEAM_DIM` for existing `team_id` values.
-
-Suggested rerun proof:
-
-```sql
-SELECT COUNT(*) AS team_count_before
-FROM   dimension.team_dim;
-
--- Run the Python team ETL again with the same NHL source data.
-
-SELECT COUNT(*) AS team_count_after
-FROM   dimension.team_dim;
-```
-
-`team_count_before` and `team_count_after` should match when the NHL source team list
-has not changed.
-
-## Python Implementation Notes
-
-The Python process should:
-
-* Use one `load_batch_id` per run.
-* Store the raw JSON payload for each team in `raw_json`.
-* Explicitly list target columns in every insert statement.
-* Commit staging inserts before calling `dimension.P_LOAD_DIM_TEAM`, or use a single
-  transaction that keeps the staged rows visible to the procedure.
-* Let the stored procedure `NOT EXISTS` check and the `TEAM_DIM_TEAM_ID_uq` constraint
-  prevent duplicate dimension rows.
-* Record failures by ending the audit batch with a `Failed` status when an error occurs
-  before `dimension.P_LOAD_DIM_TEAM` handles audit logging.
-
-## Running the Team ETL
-
-Install dependencies:
+Install Python dependencies:
 
 ```powershell
 cd ETL\Python
@@ -135,24 +53,251 @@ $env:NHL_DW_TRUSTED_CONNECTION = "yes"
 $env:NHL_DW_TRUST_SERVER_CERTIFICATE = "yes"
 ```
 
-Run the load:
+Optional NHL API settings are documented in `Python\config.example.env`.
+
+## Master ETL
+
+Run all Python ETL steps in dependency order:
+
+```powershell
+cd ETL\Python
+python run_all_etl.py
+```
+
+Default order:
+
+1. `load_teams.py`
+2. `load_players.py`
+3. `load_games.py`
+4. `load_player_game_stats.py`
+
+To replay warehouse load procedures from the latest staging batches after the
+source ETL completes:
+
+```powershell
+python run_all_etl.py --include-load-procedures
+```
+
+Useful optional filters:
+
+```powershell
+python run_all_etl.py --team-abbrevs TOR,BOS
+python run_all_etl.py --start-date 2024-10-04 --end-date 2024-10-10
+python run_all_etl.py --stats-start-date 2024-10-04 --stats-end-date 2024-10-10
+python run_all_etl.py --game-ids 2024020001,2024020002
+```
+
+## Individual ETL Steps
+
+### Team Dimension
+
+Script:
 
 ```powershell
 python load_teams.py
 ```
 
-Successful output includes the load batch identifier, parsed API team count, staging
-insert count, dimension row counts before and after the load, and the number of duplicate
-team check rows. `Duplicate team check rows` should be `0`.
+Flow:
 
-## Planned File Layout
+1. Start a load batch with `audit.P_START_LOAD_BATCH`.
+2. Call the NHL teams endpoint.
+3. Parse team records from the API response.
+4. Truncate and load `staging.TEAM_RAW`.
+5. Execute `dimension.P_LOAD_DIM_TEAM`.
+6. Validate that no duplicate `team_id` values exist in `dimension.TEAM_DIM`.
 
-```text
-ETL/
-|-- README.md
-|-- Python/
-|   |-- load_teams.py
-|   |-- requirements.txt
-|   `-- config.example.env
-`-- SSIS/
+Staging columns populated:
+
+```sql
+SOURCE_SYSTEM,
+LOAD_BATCH_ID,
+RAW_JSON,
+TEAM_ID,
+TEAM_NAME,
+TEAM_ABBREVIATION,
+CONFERENCE,
+DIVISION
 ```
+
+### Player Dimension
+
+Script:
+
+```powershell
+python load_players.py
+```
+
+Flow:
+
+1. Start a load batch with `audit.P_START_LOAD_BATCH`.
+2. Call the NHL team reference endpoint.
+3. Call each current roster endpoint.
+4. Parse player records from forwards, defensemen, and goalies.
+5. Truncate and load `staging.PLAYER_RAW`.
+6. Execute `dimension.P_LOAD_DIM_PLAYER`.
+7. Validate that no duplicate `player_id` values exist in `dimension.PLAYER_DIM`.
+
+Staging columns populated:
+
+```sql
+SOURCE_SYSTEM,
+LOAD_BATCH_ID,
+RAW_JSON,
+PLAYER_ID,
+TEAM_ID,
+FIRST_NAME,
+LAST_NAME,
+FULL_NAME,
+POSITION_CODE,
+SHOOTS_CATCHES,
+BIRTH_DATE
+```
+
+Optional filter:
+
+```powershell
+python load_players.py --team-abbrevs TOR,BOS
+```
+
+### Game Fact
+
+Script:
+
+```powershell
+python load_games.py
+```
+
+Flow:
+
+1. Start a load batch with `audit.P_START_LOAD_BATCH`.
+2. Call the NHL schedule endpoint for each date in the requested range.
+3. Parse schedule game records.
+4. Truncate and load `staging.GAME_RAW`.
+5. Execute `fact.P_LOAD_FACT_GAME`.
+6. Validate that no duplicate `game_id` values exist in `fact.GAME_FACT`.
+
+Staging columns populated:
+
+```sql
+SOURCE_SYSTEM,
+LOAD_BATCH_ID,
+RAW_JSON,
+GAME_ID,
+GAME_DATE,
+SEASON,
+GAME_TYPE,
+HOME_TEAM_ID,
+AWAY_TEAM_ID,
+HOME_GOALS,
+AWAY_GOALS,
+HOME_SHOTS,
+AWAY_SHOTS
+```
+
+Optional date range:
+
+```powershell
+python load_games.py --start-date 2024-10-04 --end-date 2024-10-10
+```
+
+### Player Game Stats Fact
+
+Script:
+
+```powershell
+python load_player_game_stats.py
+```
+
+Flow:
+
+1. Start a load batch with `audit.P_START_LOAD_BATCH`.
+2. Get final game ids from the schedule endpoint, or use explicit game ids.
+3. Call each game boxscore endpoint.
+4. Parse player game stats for away and home teams.
+5. Truncate and load `staging.PLAYER_GAME_STATS_RAW`.
+6. Execute `fact.P_LOAD_FACT_PLAYER_GAME_STATS`.
+7. Validate that no duplicate `game_key`, `player_key`, and `team_key` rows exist in
+   `fact.PLAYER_GAME_STATS_FACT`.
+
+Staging columns populated:
+
+```sql
+SOURCE_SYSTEM,
+LOAD_BATCH_ID,
+RAW_JSON,
+GAME_ID,
+PLAYER_ID,
+TEAM_ID,
+GOALS,
+ASSISTS,
+SHOTS,
+HITS,
+BLOCKS,
+PENALTY_MINUTES,
+TIME_ON_ICE_SECONDS
+```
+
+Optional filters:
+
+```powershell
+python load_player_game_stats.py --start-date 2024-10-04 --end-date 2024-10-10
+python load_player_game_stats.py --game-ids 2024020001,2024020002
+```
+
+## Stored Procedure Replay
+
+`run_load_procedures.py` assumes staging tables have already been populated. It
+derives the date dimension range from `staging.GAME_RAW`, finds the latest
+`load_batch_id` in each staging table, and executes warehouse procedures in
+dependency order.
+
+Run it directly:
+
+```powershell
+python run_load_procedures.py
+```
+
+Procedure order:
+
+1. `dimension.P_POPULATE_DATE_DIMENSION`
+2. `dimension.P_LOAD_DIM_TEAM`
+3. `dimension.P_LOAD_DIM_PLAYER`
+4. `fact.P_LOAD_FACT_GAME`
+5. `fact.P_LOAD_FACT_PLAYER_GAME_STATS`
+
+## Shared Helper Module
+
+`nhl_dw_etl.py` contains common ETL helpers:
+
+* SQL Server connection string construction.
+* NHL API JSON fetches.
+* date, integer, localized text, and time-on-ice parsing.
+* load batch start and failed-batch logging.
+* staging table truncation safeguards.
+* common row-count helpers.
+
+## Audit and Error Handling
+
+Each source ETL script:
+
+1. Starts a load batch with `audit.P_START_LOAD_BATCH`.
+2. Writes all parsed API rows with the returned `load_batch_id`.
+3. Calls the matching dimension or fact load procedure.
+4. Commits successful staging and warehouse work.
+5. Rolls back on failure.
+6. Marks the load batch as `Failed` when an exception occurs before the warehouse
+   procedure completes its own audit logging.
+
+## Rerun and Validation Expectations
+
+The ETL is intended to be rerunnable:
+
+* Staging tables are truncated before each source load.
+* Warehouse procedures use update/insert patterns and duplicate-prevention checks.
+* Natural/source keys from the NHL API are preserved.
+* Validation queries run after each load and return a nonzero exit code if duplicate
+  business keys are found.
+
+Successful output includes the load batch identifier, parsed API row counts, staging
+insert counts, warehouse row counts before and after loading, and duplicate check
+counts. Duplicate check counts should be `0`.

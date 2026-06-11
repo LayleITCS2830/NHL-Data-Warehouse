@@ -24,6 +24,7 @@ LOAD_BATCH_TABLES = {
 
 
 def get_game_date_range(cursor: pyodbc.Cursor) -> tuple[date, date]:
+    # Use staged games to decide the date dimension range needed by facts.
     cursor.execute(
         """
         SELECT  MIN(game_date) AS start_date,
@@ -40,9 +41,11 @@ def get_game_date_range(cursor: pyodbc.Cursor) -> tuple[date, date]:
 
 
 def get_latest_load_batch_id(cursor: pyodbc.Cursor, table_name: str) -> str:
+    # Only known staging tables can be used to build the dynamic batch lookup.
     if table_name not in LOAD_BATCH_TABLES.values():
         raise ValueError(f"Unsupported staging table: {table_name}")
 
+    # Pick the most recently created batch from the requested staging table.
     cursor.execute(
         f"""
         SELECT  TOP (1)
@@ -61,6 +64,7 @@ def get_latest_load_batch_id(cursor: pyodbc.Cursor, table_name: str) -> str:
 
 
 def execute_date_dimension_load(cursor: pyodbc.Cursor) -> tuple[date, date]:
+    # Populate date_dim before loading facts that depend on date keys.
     start_date, end_date = get_game_date_range(cursor)
     cursor.execute(
         """
@@ -77,22 +81,26 @@ def execute_date_dimension_load(cursor: pyodbc.Cursor) -> tuple[date, date]:
 def execute_batch_load(
     cursor: pyodbc.Cursor, procedure_name: str, staging_table_name: str
 ) -> str:
+    # Run a warehouse load procedure against the latest batch in its staging table.
     load_batch_id = get_latest_load_batch_id(cursor, staging_table_name)
     cursor.execute(f"EXEC {procedure_name} @load_batch_id = ?;", load_batch_id)
     return load_batch_id
 
 
 def run() -> int:
+    # Open one database connection for the procedure replay sequence.
     connection = pyodbc.connect(build_connection_string())
 
     try:
         cursor = connection.cursor()
 
+        # Load date_dim first because game facts join through game_date_key.
         print("Executing dimension.P_POPULATE_DATE_DIMENSION")
         start_date, end_date = execute_date_dimension_load(cursor)
         connection.commit()
         print(f"DATE_DIM range loaded: {start_date} through {end_date}")
 
+        # Load dimensions before facts so fact foreign keys can resolve.
         load_steps = [
             ("dimension.P_LOAD_DIM_TEAM", LOAD_BATCH_TABLES["team"]),
             ("dimension.P_LOAD_DIM_PLAYER", LOAD_BATCH_TABLES["player"]),
@@ -104,6 +112,7 @@ def run() -> int:
         ]
 
         for procedure_name, staging_table_name in load_steps:
+            # Commit after each procedure so completed steps remain durable.
             print(f"Executing {procedure_name}")
             load_batch_id = execute_batch_load(cursor, procedure_name, staging_table_name)
             connection.commit()
@@ -111,6 +120,7 @@ def run() -> int:
 
         return 0
     except Exception:
+        # Roll back the active procedure if the replay sequence fails.
         connection.rollback()
         raise
     finally:
@@ -118,6 +128,7 @@ def run() -> int:
 
 
 if __name__ == "__main__":
+    # CLI entry point: convert exceptions into a process failure code.
     try:
         sys.exit(run())
     except Exception as error:

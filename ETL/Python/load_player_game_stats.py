@@ -36,10 +36,12 @@ from nhl_dw_etl import (
 def parse_player_stats(
     raw_player: dict[str, Any], game_id: int, team_id: int
 ) -> dict[str, Any] | None:
+    # Boxscore groups can contain non-player placeholders; skip rows without ids.
     player_id = raw_player.get("playerId")
     if player_id is None:
         return None
 
+    # Preserve source JSON and normalize measures for staging.player_game_stats_raw.
     return {
         "raw_json": json.dumps(raw_player, ensure_ascii=False, sort_keys=True),
         "game_id": game_id,
@@ -58,9 +60,11 @@ def parse_player_stats(
 def fetch_game_ids(
     schedule_endpoint_template: str, start_date: date, end_date: date
 ) -> list[int]:
+    # Build the set of completed games that should have boxscore statistics.
     game_ids: set[int] = set()
 
     for schedule_date in date_range(start_date, end_date):
+        # Request one schedule window for each date in the requested range.
         schedule_url = schedule_endpoint_template.format(
             game_date=schedule_date.strftime("%Y-%m-%d")
         )
@@ -73,6 +77,7 @@ def fetch_game_ids(
             for raw_game in schedule_day.get("games", []):
                 if not isinstance(raw_game, dict):
                     continue
+                # Only final games should be loaded into the player game stats fact.
                 if raw_game.get("gameState") not in {"FINAL", "OFF"}:
                     continue
                 if raw_game.get("id") is not None:
@@ -84,9 +89,11 @@ def fetch_game_ids(
 def fetch_player_game_stats(
     boxscore_endpoint_template: str, game_ids: list[int]
 ) -> list[dict[str, Any]]:
+    # Fetch and flatten boxscore player stats for each selected game.
     stats_rows: list[dict[str, Any]] = []
 
     for game_id in game_ids:
+        # One boxscore response contains both away and home player stats.
         boxscore_url = boxscore_endpoint_template.format(game_id=game_id)
         boxscore = fetch_json(boxscore_url)
         player_stats = boxscore.get("playerByGameStats", {})
@@ -96,6 +103,7 @@ def fetch_player_game_stats(
         }
 
         for team_side, team_id in teams.items():
+            # Skip malformed boxscores that do not include a team identifier.
             if team_id is None:
                 continue
 
@@ -103,6 +111,7 @@ def fetch_player_game_stats(
             if not isinstance(team_stats, dict):
                 continue
 
+            # NHL boxscores group skaters and goalies separately by team side.
             for roster_group in ("forwards", "defense", "goalies"):
                 raw_players = team_stats.get(roster_group, [])
                 if not isinstance(raw_players, list):
@@ -122,6 +131,7 @@ def fetch_player_game_stats(
 def insert_staging_rows(
     cursor: pyodbc.Cursor, load_batch_id: str, stats_rows: list[dict[str, Any]]
 ) -> int:
+    # Stage parsed player game stat rows with the current audit batch id.
     insert_sql = """
         INSERT INTO staging.player_game_stats_raw
                 (source_system,
@@ -162,12 +172,14 @@ def insert_staging_rows(
     if not rows:
         return 0
 
+    # Bulk insert is important because one game can produce many player rows.
     cursor.fast_executemany = True
     cursor.executemany(insert_sql, rows)
     return len(rows)
 
 
 def execute_fact_load(cursor: pyodbc.Cursor, load_batch_id: str) -> None:
+    # Move the staged player game stats into fact.player_game_stats_fact.
     cursor.execute(
         "EXEC fact.P_LOAD_FACT_PLAYER_GAME_STATS @load_batch_id = ?;",
         load_batch_id,
@@ -175,6 +187,7 @@ def execute_fact_load(cursor: pyodbc.Cursor, load_batch_id: str) -> None:
 
 
 def get_duplicate_player_game_stats(cursor: pyodbc.Cursor) -> int:
+    # Count duplicate player/game/team combinations created by the load.
     cursor.execute(
         """
         SELECT  COUNT(*) AS duplicate_count
@@ -200,6 +213,7 @@ def run(
     end_date: date,
     explicit_game_ids: list[int],
 ) -> int:
+    # Use explicit game ids when supplied; otherwise discover final games by date.
     game_ids = explicit_game_ids or fetch_game_ids(
         schedule_endpoint_template, start_date, end_date
     )
@@ -210,15 +224,19 @@ def run(
 
     try:
         cursor = connection.cursor()
+
+        # Start audit tracking, refresh stats staging, and commit staged rows.
         stats_count_before = count_rows(cursor, "fact.player_game_stats_fact")
         load_batch_id = start_load_batch(cursor)
         truncate_staging_table(cursor, "staging.player_game_stats_raw")
         insert_count = insert_staging_rows(cursor, load_batch_id, stats_rows)
         connection.commit()
 
+        # Execute the warehouse upsert procedure for the staged batch.
         execute_fact_load(cursor, load_batch_id)
         connection.commit()
 
+        # Collect row-count and duplicate-key validation results.
         stats_count_after = count_rows(cursor, "fact.player_game_stats_fact")
         duplicate_count = get_duplicate_player_game_stats(cursor)
 
@@ -232,6 +250,7 @@ def run(
 
         return 1 if duplicate_count else 0
     except Exception as exc:
+        # Roll back open work and mark the audit batch failed when possible.
         connection.rollback()
         if load_batch_id is not None:
             mark_batch_failed(connection.cursor(), load_batch_id, str(exc))
@@ -242,12 +261,14 @@ def run(
 
 
 def parse_game_ids(value: str | None) -> list[int]:
+    # Normalize comma-separated CLI or environment filters into integer ids.
     if not value:
         return []
     return [int(game_id.strip()) for game_id in value.split(",") if game_id.strip()]
 
 
 def parse_args() -> argparse.Namespace:
+    # Allow endpoint, date range, and game id overrides for targeted loads.
     parser = argparse.ArgumentParser(
         description="Load NHL player game stats into the warehouse."
     )
@@ -280,6 +301,7 @@ def parse_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
+    # CLI entry point: convert exceptions into a process failure code.
     args = parse_args()
     try:
         sys.exit(

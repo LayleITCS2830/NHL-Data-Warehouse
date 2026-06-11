@@ -33,6 +33,7 @@ from nhl_dw_etl import (
 
 
 def parse_player(raw_player: dict[str, Any], team_id: int) -> dict[str, Any]:
+    # Extract required player identity fields from a roster entry.
     player_id = raw_player.get("id")
     first_name = localized_text(raw_player.get("firstName"))
     last_name = localized_text(raw_player.get("lastName"))
@@ -40,8 +41,10 @@ def parse_player(raw_player: dict[str, Any], team_id: int) -> dict[str, Any]:
     if player_id is None or (first_name is None and last_name is None):
         raise ValueError(f"Player record is missing id or name: {raw_player}")
 
+    # Build a consistent full name for reporting and dimensional attributes.
     full_name = " ".join(part for part in [first_name, last_name] if part)
 
+    # Preserve source JSON and normalize values for staging.player_raw.
     return {
         "raw_json": json.dumps(raw_player, ensure_ascii=False, sort_keys=True),
         "player_id": int(player_id),
@@ -58,11 +61,13 @@ def parse_player(raw_player: dict[str, Any], team_id: int) -> dict[str, Any]:
 def fetch_players(
     teams_endpoint: str, roster_endpoint_template: str, team_abbrevs: set[str] | None
 ) -> list[dict[str, Any]]:
+    # Start from the NHL team list so roster loads can discover team ids and codes.
     players: list[dict[str, Any]] = []
     teams = fetch_team_reference(teams_endpoint)
     processed_team_abbrevs: set[str] = set()
 
     for team in teams:
+        # Avoid duplicate roster calls when the team reference contains repeated codes.
         team_abbrev = team["team_abbrev"].upper()
         if team_abbrev in processed_team_abbrevs:
             continue
@@ -71,15 +76,18 @@ def fetch_players(
         if team_abbrevs is not None and team_abbrev not in team_abbrevs:
             continue
 
+        # Fetch the current roster for each selected team.
         roster_url = roster_endpoint_template.format(team_abbrev=team_abbrev)
         try:
             roster = fetch_json(roster_url)
         except requests.HTTPError as exc:
+            # Some historical or inactive teams may not have a current roster endpoint.
             if exc.response is not None and exc.response.status_code == 404:
                 print(f"Roster not found for {team_abbrev}; skipping team.")
                 continue
             raise
 
+        # NHL roster responses group skaters and goalies separately.
         for roster_group in ("forwards", "defensemen", "goalies"):
             raw_players = roster.get(roster_group, [])
             if not isinstance(raw_players, list):
@@ -95,6 +103,7 @@ def fetch_players(
 def insert_staging_rows(
     cursor: pyodbc.Cursor, load_batch_id: str, players: list[dict[str, Any]]
 ) -> int:
+    # Stage parsed player rows with the current audit batch id.
     insert_sql = """
         INSERT INTO staging.player_raw
                 (source_system,
@@ -131,16 +140,19 @@ def insert_staging_rows(
     if not rows:
         return 0
 
+    # Bulk insert keeps full-league roster loads reasonably quick.
     cursor.fast_executemany = True
     cursor.executemany(insert_sql, rows)
     return len(rows)
 
 
 def execute_dimension_load(cursor: pyodbc.Cursor, load_batch_id: str) -> None:
+    # Move the staged player records into dimension.player_dim.
     cursor.execute("EXEC dimension.P_LOAD_DIM_PLAYER @load_batch_id = ?;", load_batch_id)
 
 
 def get_duplicate_players(cursor: pyodbc.Cursor) -> list[tuple[int, int]]:
+    # Return any duplicate source player keys created by the load.
     cursor.execute(
         """
         SELECT  player_id,
@@ -156,6 +168,7 @@ def get_duplicate_players(cursor: pyodbc.Cursor) -> list[tuple[int, int]]:
 def run(
     teams_endpoint: str, roster_endpoint_template: str, team_abbrevs: set[str] | None
 ) -> int:
+    # Fetch and normalize roster data before opening the warehouse transaction.
     players = fetch_players(teams_endpoint, roster_endpoint_template, team_abbrevs)
 
     load_batch_id: str | None = None
@@ -163,15 +176,19 @@ def run(
 
     try:
         cursor = connection.cursor()
+
+        # Start audit tracking, refresh player staging, and commit staged rows.
         player_count_before = count_rows(cursor, "dimension.player_dim")
         load_batch_id = start_load_batch(cursor)
         truncate_staging_table(cursor, "staging.player_raw")
         insert_count = insert_staging_rows(cursor, load_batch_id, players)
         connection.commit()
 
+        # Execute the warehouse upsert procedure for the staged batch.
         execute_dimension_load(cursor, load_batch_id)
         connection.commit()
 
+        # Collect row-count and duplicate-key validation results.
         player_count_after = count_rows(cursor, "dimension.player_dim")
         duplicate_players = get_duplicate_players(cursor)
 
@@ -183,12 +200,14 @@ def run(
         print(f"Duplicate player check rows: {len(duplicate_players)}")
 
         if duplicate_players:
+            # A nonzero return code lets schedulers fail the job on validation errors.
             for player_id, player_count in duplicate_players:
                 print(f"Duplicate player_id {player_id}: {player_count} rows")
             return 1
 
         return 0
     except Exception as exc:
+        # Roll back open work and mark the audit batch failed when possible.
         connection.rollback()
         if load_batch_id is not None:
             mark_batch_failed(connection.cursor(), load_batch_id, str(exc))
@@ -199,12 +218,14 @@ def run(
 
 
 def parse_team_abbrevs(value: str | None) -> set[str] | None:
+    # Normalize comma-separated CLI or environment filters into uppercase codes.
     if not value:
         return None
     return {team_abbrev.strip().upper() for team_abbrev in value.split(",") if team_abbrev.strip()}
 
 
 def parse_args() -> argparse.Namespace:
+    # Allow endpoint and team filters to be overridden without code changes.
     parser = argparse.ArgumentParser(description="Load NHL players into the warehouse.")
     parser.add_argument(
         "--teams-endpoint",
@@ -225,6 +246,7 @@ def parse_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
+    # CLI entry point: convert exceptions into a process failure code.
     args = parse_args()
     try:
         sys.exit(
