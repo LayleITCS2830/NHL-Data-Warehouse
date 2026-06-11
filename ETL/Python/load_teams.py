@@ -2,7 +2,7 @@
 
 This script calls the NHL team endpoint, stages the response in staging.team_raw,
 executes dimension.P_LOAD_DIM_TEAM, and validates that no duplicate source teams
-exist in dimension.team_dim.
+exist in dimension.team_dim. The staging table is truncated before each load.
 """
 
 from __future__ import annotations
@@ -14,39 +14,21 @@ import sys
 from typing import Any
 
 import pyodbc
-print(pyodbc.drivers()) # "remove once testing confirms pyodbc supports Python 3.13"
-import requests
 
-
-DEFAULT_TEAMS_ENDPOINT = "https://api.nhle.com/stats/rest/en/team"
-SOURCE_SYSTEM = "NHL API"
-
-
-def build_connection_string() -> str:
-    connection_string = os.getenv("NHL_DW_CONNECTION_STRING")
-    if connection_string:
-        return connection_string
-
-    server = os.getenv("NHL_DW_SQL_SERVER", "localhost")
-    database = os.getenv("NHL_DW_DATABASE", "NHLDataWarehouse")
-    driver = os.getenv("NHL_DW_ODBC_DRIVER", "ODBC Driver 17 for SQL Server")
-    trusted_connection = os.getenv("NHL_DW_TRUSTED_CONNECTION", "yes")
-    trust_server_certificate = os.getenv("NHL_DW_TRUST_SERVER_CERTIFICATE", "yes")
-
-    return (
-        f"DRIVER={{{driver}}};"
-        f"SERVER={server};"
-        f"DATABASE={database};"
-        f"Trusted_Connection={trusted_connection};"
-        f"TrustServerCertificate={trust_server_certificate};"
-    )
+from nhl_dw_etl import (
+    DEFAULT_TEAMS_ENDPOINT,
+    SOURCE_SYSTEM,
+    build_connection_string,
+    count_rows,
+    fetch_json,
+    mark_batch_failed,
+    start_load_batch,
+    truncate_staging_table,
+)
 
 
 def fetch_teams(endpoint: str) -> list[dict[str, Any]]:
-    response = requests.get(endpoint, timeout=30)
-    response.raise_for_status()
-    payload = response.json()
-
+    payload = fetch_json(endpoint)
     teams = payload.get("data")
     if not isinstance(teams, list):
         raise ValueError("NHL team endpoint response did not include a data list.")
@@ -69,26 +51,6 @@ def parse_team(raw_team: dict[str, Any]) -> dict[str, Any]:
         "conference": raw_team.get("conferenceName"),
         "division": raw_team.get("divisionName"),
     }
-
-
-def start_load_batch(cursor: pyodbc.Cursor) -> str:
-    cursor.execute(
-        """
-        DECLARE @load_batch_id UNIQUEIDENTIFIER;
-
-        EXEC audit.P_START_LOAD_BATCH
-            @source_system = ?,
-            @load_batch_id = @load_batch_id OUTPUT;
-
-        SELECT CONVERT(VARCHAR(36), @load_batch_id) AS load_batch_id;
-        """,
-        SOURCE_SYSTEM,
-    )
-    row = cursor.fetchone()
-    if row is None:
-        raise RuntimeError("audit.P_START_LOAD_BATCH did not return a load_batch_id.")
-
-    return row.load_batch_id
 
 
 def insert_staging_rows(
@@ -121,6 +83,9 @@ def insert_staging_rows(
         for team in teams
     ]
 
+    if not rows:
+        return 0
+
     cursor.fast_executemany = True
     cursor.executemany(insert_sql, rows)
     return len(rows)
@@ -128,11 +93,6 @@ def insert_staging_rows(
 
 def execute_dimension_load(cursor: pyodbc.Cursor, load_batch_id: str) -> None:
     cursor.execute("EXEC dimension.P_LOAD_DIM_TEAM @load_batch_id = ?;", load_batch_id)
-
-
-def get_team_count(cursor: pyodbc.Cursor) -> int:
-    cursor.execute("SELECT COUNT(*) AS team_count FROM dimension.team_dim;")
-    return int(cursor.fetchone().team_count)
 
 
 def get_duplicate_teams(cursor: pyodbc.Cursor) -> list[tuple[int, int]]:
@@ -148,21 +108,6 @@ def get_duplicate_teams(cursor: pyodbc.Cursor) -> list[tuple[int, int]]:
     return [(int(row.team_id), int(row.team_count)) for row in cursor.fetchall()]
 
 
-def mark_batch_failed(cursor: pyodbc.Cursor, load_batch_id: str, error_message: str) -> None:
-    cursor.execute(
-        """
-        EXEC audit.P_END_LOAD_BATCH
-            @Load_batch_id = ?,
-            @Status = 'Failed',
-            @RowsInserted = 0,
-            @RowsUpdated = 0,
-            @ErrorMessage = ?;
-        """,
-        load_batch_id,
-        error_message[:4000],
-    )
-
-
 def run(endpoint: str) -> int:
     raw_teams = fetch_teams(endpoint)
     parsed_teams = [parse_team(team) for team in raw_teams]
@@ -172,15 +117,16 @@ def run(endpoint: str) -> int:
 
     try:
         cursor = connection.cursor()
-        team_count_before = get_team_count(cursor)
+        team_count_before = count_rows(cursor, "dimension.team_dim")
         load_batch_id = start_load_batch(cursor)
+        truncate_staging_table(cursor, "staging.team_raw")
         insert_count = insert_staging_rows(cursor, load_batch_id, parsed_teams)
         connection.commit()
 
         execute_dimension_load(cursor, load_batch_id)
         connection.commit()
 
-        team_count_after = get_team_count(cursor)
+        team_count_after = count_rows(cursor, "dimension.team_dim")
         duplicate_teams = get_duplicate_teams(cursor)
 
         print(f"Load batch: {load_batch_id}")
