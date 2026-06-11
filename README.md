@@ -1,276 +1,187 @@
 # NHL Data Warehouse
 
-## Overview
+The NHL Data Warehouse is a SQL Server 2022 portfolio project that demonstrates professional data warehousing, ETL architecture, dimensional modeling, auditing, and reporting practices using publicly available NHL hockey data.
 
-The NHL Data Warehouse is a SQL Server 2022 portfolio project designed to demonstrate professional data warehousing, ETL, dimensional modeling, and reporting practices.
+The project combines a SQL Server dimensional warehouse with Python-based NHL API ingestion. It is intended to show enterprise-style development patterns: layered schemas, rerunnable load procedures, source-to-staging extraction, audit logging, validation checks, SQLCMD deployment, and reporting views built for analytics consumers.
 
-This project follows a traditional data warehouse architecture using staging, dimension, fact, reporting, and audit layers. The goal is to simulate the design patterns commonly used in enterprise analytics environments while using publicly available NHL hockey data.
+## Project Guides
 
-The project is being developed as a learning and portfolio initiative to showcase skills in:
-
-* SQL Server Development
-* Data Warehousing
-* ETL Design
-* Dimensional Modeling
-* Stored Procedure Development
-* Data Quality and Auditing
-* Reporting and Analytics
-
----
+- [Database README](Database/README.md): database architecture, schemas, object inventory, naming standards, deployment order, and warehouse load flow.
+- [ETL README](ETL/README.md): Python setup, source extraction scripts, command-line options, stored procedure replay, validation, and rerun expectations.
 
 ## Technology Stack
 
-| Technology                          | Purpose                        |
-| ----------------------------------- | ------------------------------ |
-| SQL Server 2022                     | Database Platform              |
-| SQL Server Management Studio (SSMS) | Development and Administration |
-| GitHub                              | Source Control                 |
-| T-SQL                               | Database Development           |
-| SQLCMD                              | Database Deployment            |
-
-Future enhancements may include:
-
-* Python-based NHL API ingestion
-* Power BI dashboards
-* SSIS packages
-* Automated CI/CD deployment pipelines
-
----
+| Technology | Purpose |
+| ---------- | ------- |
+| SQL Server 2022 | Data warehouse platform |
+| T-SQL | Tables, views, stored procedures, constraints, and load logic |
+| SQLCMD | Database deployment script orchestration |
+| Python | NHL API extraction, staging loads, and ETL orchestration |
+| pyodbc | Python-to-SQL Server connectivity |
+| GitHub | Source control and portfolio presentation |
 
 ## Architecture
 
-The warehouse follows a layered architecture:
-
 ```text
 NHL API
-    ↓
-Staging Layer
-    ↓
-Dimension Layer
-    ↓
-Fact Layer
-    ↓
-Reporting Views
-    ↓
-Analytics / Power BI
+    |
+    v
+Python ETL
+    |
+    v
+staging tables
+    |
+    v
+dimension and fact load procedures
+    |
+    v
+reporting views
+    |
+    v
+analytics / Power BI
 ```
 
----
-
-## Database Schemas
-
-### Staging
-
-Stores raw source data before transformation.
-
-Examples:
-
-* Staging.TeamRaw
-* Staging.PlayerRaw
-* Staging.GameRaw
-* Staging.PlayerGameStatsRaw
-
----
-
-### Dimension
-
-Stores descriptive business entities.
-
-Examples:
-
-* Dimension.Date
-* Dimension.Team
-* Dimension.Player
-
----
-
-### Fact
-
-Stores measurable business events.
-
-Examples:
-
-* Fact.Game
-* Fact.PlayerGameStats
-
----
-
-### Reporting
-
-Contains business-friendly views for reporting and analytics.
-
-Examples:
-
-* Reporting.vwTeamGameResults
-* Reporting.vwPlayerGameStats
-* Reporting.vwTeamSeasonSummary
-* Reporting.vwPlayerSeasonSummary
-
----
-
-### Audit
-
-Tracks ETL execution and load history.
-
-Examples:
-
-* Audit.LoadBatch
-
----
-
-## Project Structure
+## Repository Layout
 
 ```text
-Database/
-│
-├── Deploy.sql
-├── 001_CreateDatabase.sql
-├── 002_CreateSchemas.sql
-│
-└── Objects/
-    ├── Tables/
-    ├── Stored Procedures/
-    ├── Views/
-    └── SampleData/
+NHLDataWarehouse/
+|-- Database/
+|   |-- README.md
+|   |-- 001_CreateDatabase.sql
+|   |-- 002_CreateSchemas.sql
+|   |-- 003_DeployDatabase.sql
+|   |-- 004_LoadSampleData.sql
+|   |-- Objects/
+|   |   |-- Stored Procedures/
+|   |   |-- Tables/
+|   |   `-- Views/
+|   |-- PreDeploymentScripts/
+|   |-- PostDeploymentScripts/
+|   `-- SampleData/
+|-- ETL/
+|   |-- README.md
+|   |-- Python/
+|   |   |-- config.example.env
+|   |   |-- load_games.py
+|   |   |-- load_players.py
+|   |   |-- load_player_game_stats.py
+|   |   |-- load_teams.py
+|   |   |-- nhl_dw_etl.py
+|   |   |-- requirements.txt
+|   |   |-- run_all_etl.py
+|   |   `-- run_load_procedures.py
+|   `-- SSIS/
+|-- DatabaseUnitTests/
+|-- Documentation/
+|-- agents.md
+`-- README.md
 ```
 
----
+## Database Layer
 
-## Deployment
+The database uses separate schemas for each warehouse responsibility:
 
-### Prerequisites
+- `staging`: raw NHL API landing tables.
+- `dimension`: descriptive entities such as teams, players, and dates.
+- `fact`: measurable game and player-game events.
+- `audit`: ETL execution and load-batch tracking.
+- `reporting`: business-friendly views for analytics and reporting.
 
-* SQL Server 2022
-* SQL Server Management Studio (SSMS)
+Core warehouse objects include:
 
-### Deploy Database
+- Tables such as `dimension.TEAM_DIM`, `dimension.PLAYER_DIM`, `fact.GAME_FACT`, `fact.PLAYER_GAME_STATS_FACT`, and `audit.LOAD_BATCH`.
+- Stored procedures such as `audit.P_START_LOAD_BATCH`, `dimension.P_LOAD_DIM_TEAM`, `fact.P_LOAD_FACT_GAME`, and `fact.P_LOAD_FACT_PLAYER_GAME_STATS`.
+- Reporting views such as `reporting.V_TEAM_GAME_RESULTS`, `reporting.V_PLAYER_GAME_STATS`, `reporting.V_TEAM_SEASON_SUMMARY`, and `reporting.V_PLAYER_SEASON_SUMMARY`.
 
-1. Open SSMS.
-2. Enable SQLCMD Mode.
+See [Database/README.md](Database/README.md) for object details, naming standards, deployment instructions, and the warehouse load sequence.
+
+## ETL Layer
+
+The Python ETL loads NHL API data into staging tables, executes matching warehouse load procedures, and validates duplicate-prevention expectations.
+
+Primary ETL scripts:
+
+- `load_teams.py`: loads NHL team data into `staging.TEAM_RAW` and `dimension.TEAM_DIM`.
+- `load_players.py`: loads roster/player data into `staging.PLAYER_RAW` and `dimension.PLAYER_DIM`.
+- `load_games.py`: loads schedule/game data into `staging.GAME_RAW` and `fact.GAME_FACT`.
+- `load_player_game_stats.py`: loads boxscore player stats into `staging.PLAYER_GAME_STATS_RAW` and `fact.PLAYER_GAME_STATS_FACT`.
+- `run_all_etl.py`: runs the source ETL scripts in dependency order.
+- `run_load_procedures.py`: replays warehouse load procedures from the latest staging batches.
+
+See [ETL/README.md](ETL/README.md) for setup, environment variables, filters, run commands, validation behavior, and rerun expectations.
+
+## Quick Start
+
+### 1. Deploy the Database
+
+Open `Database/003_DeployDatabase.sql` in SQL Server Management Studio, enable SQLCMD mode, and execute it.
 
 ```text
-Query → SQLCMD Mode
+Database/003_DeployDatabase.sql
 ```
 
-3. Open:
+Optional sample data can be loaded with:
 
 ```text
-Database/Deploy.sql
+Database/004_LoadSampleData.sql
 ```
 
-4. Execute the script.
+### 2. Configure Python ETL
 
-The deployment script will:
+Install Python dependencies:
 
-* Create the database
-* Create schemas
-* Create tables
-* Create stored procedures
-* Create reporting views
+```powershell
+cd ETL\Python
+python -m pip install -r requirements.txt
+```
 
----
+Set SQL Server connection environment variables or provide `NHL_DW_CONNECTION_STRING`. See [ETL/README.md](ETL/README.md) and `ETL/Python/config.example.env` for the full configuration options.
 
-## Core Tables
+### 3. Run the ETL
 
-### Dimension.Date
+Run all source ETL steps in dependency order:
 
-Provides a reusable calendar dimension used throughout the warehouse.
+```powershell
+cd ETL\Python
+python run_all_etl.py
+```
 
-### Dimension.Team
+Common filters are documented in [ETL/README.md](ETL/README.md), including team abbreviation filters, date ranges, stats date ranges, and explicit game ids.
 
-Stores NHL team information.
+## Development Standards
 
-### Dimension.Player
+- Use schema-qualified database object names.
+- Keep table and column definitions in uppercase Kimball-style naming.
+- Use lowercase Kimball-style references inside stored procedures, views, functions, and ETL mappings.
+- Keep stored procedure names in the `schema.P_[OPERATION]_[OBJECT]` pattern.
+- Use `reporting.V_[VIEW_NAME]` for reporting views.
+- Avoid `SELECT *`; explicitly list columns.
+- Use `TRY/CATCH`, transactions, and audit logging for warehouse loads.
+- Keep deployment scripts ordered by dependency.
 
-Stores NHL player information.
+Detailed database standards are maintained in [Database/README.md](Database/README.md) and [agents.md](agents.md).
 
-### Fact.Game
+## Current Capabilities
 
-Stores game-level statistics.
-
-### Fact.PlayerGameStats
-
-Stores player performance statistics by game.
-
-### Audit.LoadBatch
-
-Stores ETL execution history and audit information.
-
----
-
-## ETL Process
-
-The ETL framework is designed around stored procedures.
-
-Key procedures include:
-
-* Audit.usp_StartLoadBatch
-* Audit.usp_EndLoadBatch
-* Dimension.usp_LoadDimTeam
-* Dimension.usp_LoadDimPlayer
-* Dimension.usp_PopulateDateDimension
-* Fact.usp_LoadFactGame
-* Fact.usp_LoadFactPlayerGameStats
-
-Design goals:
-
-* Rerunnable loads
-* Error handling
-* Audit logging
-* Duplicate prevention
-* Transactional consistency
-
----
-
-## Reporting Views
-
-The reporting layer provides simplified access to warehouse data.
-
-Examples include:
-
-### Reporting.vwTeamGameResults
-
-Game-level team performance metrics.
-
-### Reporting.vwPlayerGameStats
-
-Player-level game statistics.
-
-### Reporting.vwTeamSeasonSummary
-
-Season-level team summaries.
-
-### Reporting.vwPlayerSeasonSummary
-
-Season-level player summaries.
-
----
+- SQL Server 2022 data warehouse deployment through SQLCMD scripts.
+- Audit, staging, dimension, fact, and reporting schemas.
+- Rerunnable dimension and fact load procedures.
+- Python extraction from NHL API endpoints.
+- Batch-driven staging loads with raw JSON retention.
+- Duplicate validation after ETL loads.
+- Reporting views for team game results, player game stats, team season summaries, and player season summaries.
 
 ## Future Enhancements
 
-Planned enhancements include:
-
-* NHL API integration
-* Automated data ingestion
-* Historical season loading
-* Power BI dashboards
-* Advanced player analytics
-* Team performance trend analysis
-* CI/CD deployment pipeline
-* Data quality monitoring
-
----
+- Expanded historical season loading.
+- Additional schedule, standings, roster, and goalie statistics facts.
+- Power BI dashboards over reporting views.
+- SSIS package version of the ETL process.
+- Automated database tests and CI/CD deployment pipelines.
+- Broader data quality monitoring.
 
 ## Author
 
 Andrew Layle
 
-Data professional with experience in:
-
-* SQL Server Development
-* ETL Development
-* Data Warehousing
-* Reporting and Analytics
-* Business Process Improvement
-
-This project serves as a practical demonstration of enterprise-style database design and data engineering principles.
+This project serves as a practical demonstration of enterprise-style database design, ETL development, dimensional modeling, and analytics engineering principles.
