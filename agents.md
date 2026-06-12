@@ -10,7 +10,7 @@ The project demonstrates professional data warehouse design, ETL architecture, d
 
 - Use `README.md` for the project-level overview and quick start.
 - Use `Database/README.md` for database architecture, object inventory, deployment, and warehouse load flow.
-- Use `ETL/README.md` for Python ETL setup, commands, filters, validation, and rerun expectations.
+- Use `ETL/README.md` for Python and C# ETL setup, commands, filters, validation, and rerun expectations.
 
 When updating documentation, keep the root README high level and put detailed subsystem instructions in the matching subfolder README.
 
@@ -21,6 +21,7 @@ When updating documentation, keep the root README high level and put detailed su
 - T-SQL for database development
 - SQLCMD deployment scripts
 - Python ETL for NHL API ingestion
+- C# ETL for alternate NHL API ingestion
 - GitHub for source control
 
 ## Project Structure
@@ -42,6 +43,11 @@ NHLDataWarehouse/
 |   `-- SampleData/
 |-- ETL/
 |   |-- README.md
+|   |-- CSharp/
+|   |   |-- README.md
+|   |   |-- config.example.env
+|   |   |-- NHLDataWarehouse.Etl.csproj
+|   |   `-- Program.cs
 |   |-- Python/
 |   |   |-- config.example.env
 |   |   |-- load_games.py
@@ -56,7 +62,7 @@ NHLDataWarehouse/
 |-- DatabaseUnitTests/
 |-- Documentation/
 |-- README.md
-`-- agents.md
+`-- AGENTS.md
 ```
 
 ## Architecture
@@ -75,7 +81,7 @@ NHLDataWarehouse/
 NHL API
     |
     v
-Python ETL
+Python or C# ETL
     |
     v
 staging
@@ -408,7 +414,7 @@ GO
 
 ## ETL Standards
 
-All ETL procedures and Python source loads must:
+All ETL procedures, Python source loads, and C# source loads must:
 
 - Support reruns.
 - Prevent duplicate records.

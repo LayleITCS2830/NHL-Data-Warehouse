@@ -2,12 +2,12 @@
 
 The NHL Data Warehouse is a SQL Server 2022 portfolio project that demonstrates professional data warehousing, ETL architecture, dimensional modeling, auditing, and reporting practices using publicly available NHL hockey data.
 
-The project combines a SQL Server dimensional warehouse with Python-based NHL API ingestion. It is intended to show enterprise-style development patterns: layered schemas, rerunnable load procedures, source-to-staging extraction, audit logging, validation checks, SQLCMD deployment, and reporting views built for analytics consumers.
+The project combines a SQL Server dimensional warehouse with Python and C# NHL API ingestion options. It is intended to show enterprise-style development patterns: layered schemas, rerunnable load procedures, source-to-staging extraction, audit logging, validation checks, SQLCMD deployment, and reporting views built for analytics consumers.
 
 ## Project Guides
 
 - [Database README](Database/README.md): database architecture, schemas, object inventory, naming standards, deployment order, and warehouse load flow.
-- [ETL README](ETL/README.md): Python setup, source extraction scripts, command-line options, stored procedure replay, validation, and rerun expectations.
+- [ETL README](ETL/README.md): Python and C# setup, source extraction commands, stored procedure replay, validation, and rerun expectations.
 
 ## Technology Stack
 
@@ -17,7 +17,9 @@ The project combines a SQL Server dimensional warehouse with Python-based NHL AP
 | T-SQL | Tables, views, stored procedures, constraints, and load logic |
 | SQLCMD | Database deployment script orchestration |
 | Python | NHL API extraction, staging loads, and ETL orchestration |
+| C# / .NET | Alternate NHL API extraction, staging loads, and ETL orchestration |
 | pyodbc | Python-to-SQL Server connectivity |
+| Microsoft.Data.SqlClient | C#-to-SQL Server connectivity |
 | GitHub | Source control and portfolio presentation |
 
 ## Architecture
@@ -26,7 +28,7 @@ The project combines a SQL Server dimensional warehouse with Python-based NHL AP
 NHL API
     |
     v
-Python ETL
+Python or C# ETL
     |
     v
 staging tables
@@ -60,6 +62,11 @@ NHLDataWarehouse/
 |   `-- SampleData/
 |-- ETL/
 |   |-- README.md
+|   |-- CSharp/
+|   |   |-- README.md
+|   |   |-- config.example.env
+|   |   |-- NHLDataWarehouse.Etl.csproj
+|   |   `-- Program.cs
 |   |-- Python/
 |   |   |-- config.example.env
 |   |   |-- load_games.py
@@ -73,7 +80,7 @@ NHLDataWarehouse/
 |   `-- SSIS/
 |-- DatabaseUnitTests/
 |-- Documentation/
-|-- AGENTS.md
+|-- agents.md
 `-- README.md
 ```
 
@@ -97,9 +104,9 @@ See [Database/README.md](Database/README.md) for object details, naming standard
 
 ## ETL Layer
 
-The Python ETL loads NHL API data into staging tables, executes matching warehouse load procedures, and validates duplicate-prevention expectations.
+The ETL layer offers both Python and C# loaders. Both options load NHL API data into staging tables, execute matching warehouse load procedures, and validate duplicate-prevention expectations.
 
-Primary ETL scripts:
+Primary Python ETL scripts:
 
 - `load_teams.py`: loads NHL team data into `staging.TEAM_RAW` and `dimension.TEAM_DIM`.
 - `load_players.py`: loads roster/player data into `staging.PLAYER_RAW` and `dimension.PLAYER_DIM`.
@@ -107,6 +114,8 @@ Primary ETL scripts:
 - `load_player_game_stats.py`: loads boxscore player stats into `staging.PLAYER_GAME_STATS_RAW` and `fact.PLAYER_GAME_STATS_FACT`.
 - `run_all_etl.py`: runs the source ETL scripts in dependency order.
 - `run_load_procedures.py`: replays warehouse load procedures from the latest staging batches.
+
+The C# ETL lives in `ETL/CSharp` and exposes matching commands through `dotnet run -- all`, `teams`, `players`, `games`, `player-stats`, and `replay-procedures`.
 
 See [ETL/README.md](ETL/README.md) for setup, environment variables, filters, run commands, validation behavior, and rerun expectations.
 
@@ -126,7 +135,7 @@ Optional sample data can be loaded with:
 Database/004_LoadSampleData.sql
 ```
 
-### 2. Configure Python ETL
+### 2. Configure ETL
 
 Install Python dependencies:
 
@@ -137,13 +146,27 @@ python -m pip install -r requirements.txt
 
 Set SQL Server connection environment variables or provide `NHL_DW_CONNECTION_STRING`. See [ETL/README.md](ETL/README.md) and `ETL/Python/config.example.env` for the full configuration options.
 
+For C#, install the .NET 8 SDK and restore packages:
+
+```powershell
+cd ETL\CSharp
+dotnet restore
+```
+
 ### 3. Run the ETL
 
-Run all source ETL steps in dependency order:
+Run all source ETL steps in dependency order with Python:
 
 ```powershell
 cd ETL\Python
 python run_all_etl.py
+```
+
+Or run the C# ETL:
+
+```powershell
+cd ETL\CSharp
+dotnet run -- all
 ```
 
 Common filters are documented in [ETL/README.md](ETL/README.md), including team abbreviation filters, date ranges, stats date ranges, and explicit game ids.
@@ -159,7 +182,7 @@ Common filters are documented in [ETL/README.md](ETL/README.md), including team 
 - Use `TRY/CATCH`, transactions, and audit logging for warehouse loads.
 - Keep deployment scripts ordered by dependency.
 
-Detailed database standards are maintained in [Database/README.md](Database/README.md) and [AGENTS.md](AGENTS.md).
+Detailed database standards are maintained in [Database/README.md](Database/README.md) and [agents.md](agents.md).
 
 ## Current Capabilities
 
@@ -167,6 +190,7 @@ Detailed database standards are maintained in [Database/README.md](Database/READ
 - Audit, staging, dimension, fact, and reporting schemas.
 - Rerunnable dimension and fact load procedures.
 - Python extraction from NHL API endpoints.
+- C# extraction from NHL API endpoints.
 - Batch-driven staging loads with raw JSON retention.
 - Duplicate validation after ETL loads.
 - Reporting views for team game results, player game stats, team season summaries, and player season summaries.

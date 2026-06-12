@@ -1,9 +1,10 @@
 # NHL Data Warehouse ETL
 
-This folder contains Python ETL processes that load NHL API data into the SQL
-Server data warehouse.
+This folder contains ETL options that load NHL API data into the SQL Server data
+warehouse. The Python and C# implementations both stage source rows first and
+then execute the shared warehouse stored procedures.
 
-The Python ETL follows this flow:
+The ETL follows this flow:
 
 ```text
 NHL API
@@ -17,6 +18,11 @@ NHL API
 ```text
 ETL/
 |-- README.md
+|-- CSharp/
+|   |-- README.md
+|   |-- config.example.env
+|   |-- NHLDataWarehouse.Etl.csproj
+|   `-- Program.cs
 |-- Python/
 |   |-- .env
 |   |-- config.example.env
@@ -33,7 +39,7 @@ ETL/
 
 `__pycache__` may be created locally when Python scripts are compiled or run.
 
-## Setup
+## Python Setup
 
 Install Python dependencies:
 
@@ -55,7 +61,25 @@ $env:NHL_DW_TRUST_SERVER_CERTIFICATE = "yes"
 
 Optional NHL API settings are documented in `Python\config.example.env`.
 
-## Master ETL
+## C# Setup
+
+Install the .NET 8 SDK and restore packages:
+
+```powershell
+cd ETL\CSharp
+dotnet restore
+```
+
+Set a complete SQL Server connection string, or use the individual environment
+variables documented in `CSharp\config.example.env`.
+
+```powershell
+$env:NHL_DW_CONNECTION_STRING = "Server=localhost;Database=NHLDataWarehouse;Trusted_Connection=True;TrustServerCertificate=True;"
+```
+
+See `CSharp\README.md` for the full C# command reference.
+
+## Python Master ETL
 
 Run all Python ETL steps in dependency order:
 
@@ -85,6 +109,26 @@ python run_all_etl.py --team-abbrevs TOR,BOS
 python run_all_etl.py --start-date 2024-10-04 --end-date 2024-10-10
 python run_all_etl.py --stats-start-date 2024-10-04 --stats-end-date 2024-10-10
 python run_all_etl.py --game-ids 2024020001,2024020002
+```
+
+## C# Master ETL
+
+Run all C# ETL steps in dependency order:
+
+```powershell
+cd ETL\CSharp
+dotnet run -- all
+```
+
+Useful C# commands:
+
+```powershell
+dotnet run -- teams
+dotnet run -- players --team-abbrevs TOR,BOS
+dotnet run -- games --start-date 2024-10-04 --end-date 2024-10-10
+dotnet run -- player-stats --game-ids 2024020001,2024020002
+dotnet run -- replay-procedures
+dotnet run -- all --include-load-procedures
 ```
 
 ## Individual ETL Steps
@@ -246,15 +290,22 @@ python load_player_game_stats.py --game-ids 2024020001,2024020002
 
 ## Stored Procedure Replay
 
-`run_load_procedures.py` assumes staging tables have already been populated. It
-derives the date dimension range from `staging.GAME_RAW`, finds the latest
-`load_batch_id` in each staging table, and executes warehouse procedures in
-dependency order.
+`run_load_procedures.py` and the C# `replay-procedures` command assume staging
+tables have already been populated. They derive the date dimension range from
+`staging.GAME_RAW`, find the latest `load_batch_id` in each staging table, and
+execute warehouse procedures in dependency order.
 
 Run it directly:
 
 ```powershell
 python run_load_procedures.py
+```
+
+C#:
+
+```powershell
+cd ETL\CSharp
+dotnet run -- replay-procedures
 ```
 
 Procedure order:
@@ -265,7 +316,7 @@ Procedure order:
 4. `fact.P_LOAD_FACT_GAME`
 5. `fact.P_LOAD_FACT_PLAYER_GAME_STATS`
 
-## Shared Helper Module
+## Shared Helper Modules
 
 `nhl_dw_etl.py` contains common ETL helpers:
 
@@ -275,6 +326,10 @@ Procedure order:
 * load batch start and failed-batch logging.
 * staging table truncation safeguards.
 * common row-count helpers.
+
+`CSharp\Program.cs` contains equivalent C# helpers for connection string
+construction, API fetches, parsing, staging truncation, bulk copy, warehouse
+procedure execution, and validation checks.
 
 ## Audit and Error Handling
 
